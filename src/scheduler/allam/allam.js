@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const db = require("./firebase"); // Firebase 초기화
+const db = require("../../firebase/firebase"); // Firebase 초기화
 
 // 신규 가입자 처리: 가입 및 설문 완료 시 즉시 전송
 async function handleNewSignups() {
@@ -53,10 +53,10 @@ async function sendSMS(phone, message) {
   // 실제 카카오톡/문자 API 연동은 여기에 추가
 }
 
-// 스케줄러 설정
-cron.schedule("0 0 * * 1", async () => {
+// 스케줄러 설정 (매주 수요일 10:15)
+cron.schedule("15 10 * * 3", async () => {
   // 매주 월요일 00:00에 실행
-  console.log("[스케줄러] 월요일: 신규 미설문자 처리 시작");
+  console.log("[스케줄러] 01/08 테스트: 신규 미설문자 처리 시작");
   await handleNewIncompleteSurveys();
   console.log("[스케줄러] 신규 미설문자 처리 완료");
 });
