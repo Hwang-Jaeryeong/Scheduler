@@ -1,12 +1,14 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const { runSchedulerTask } = require("./scheduler/allam");
+import express from "express";
+import dotenv from "dotenv";
+import { runSchedulerTask } from "scheduler/allam/allam";
 
-dotenv.config(); // .env 로드드
+
+dotenv.config(); // .env 파일 로드
+
 const app = express();
 
 // /allam 경로 - 수동 스케줄러 실행
-app.get("/allam", async (req, res) => {
+app.get("/allam", async (_, res) => {
   try {
     await runSchedulerTask(); // 스케줄러 작업 실행
     res.send("스케줄러 작업이 성공적으로 실행되었습니다.");
