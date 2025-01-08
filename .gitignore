@@ -2,7 +2,7 @@ node_modules/
 npm-debug.log*
 
 # Firebase Admin Key
-src/scheduler/firebase-key.json
+src/firebase/firebase-key.json
 
 # 환경 변수 파일
 .env
