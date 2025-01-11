@@ -63,115 +63,85 @@ function sendSMS(phone, message) {
         }
     });
 }
-// // 일주일 이내 가입 여부 확인 함수
-// function isWithinAWeek(userTime: FirebaseFirestore.Timestamp | undefined): boolean {
-//     if (!userTime || !userTime.toDate) {
-//       console.warn("userTime이 유효하지 않습니다:", userTime);
-//       return false;
-//     }
-//     const now = new Date();
-//     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-//     return userTime.toDate() > oneWeekAgo;
-// }
-// // 결과 출력 함수 추가
-// function countUsersWithinAWeek(users: any[]): number {
-//     let validCount = 0;
-//     users.forEach((user) => {
-//       if (isWithinAWeek(user.userTime)) {
-//         validCount++;
-//       }
-//     });
-//     console.log(`일주일 이내 가입한 유저 수: ${validCount}`);
-//     return validCount;
-// } 
-// 대상 필터링 함수
-function getFilteredUsers(currentTime, isMale) {
+// 카드 수신 여부 확인 함수
+function getReceivedCards(currentTime) {
     return __awaiter(this, void 0, void 0, function* () {
-        const today13 = firestore_1.Timestamp.fromDate(new Date(currentTime.setHours(13, 0, 0, 0))); // 오늘 13:00
-        const yesterday23 = firestore_1.Timestamp.fromDate(new Date(currentTime.getTime() - 14 * 60 * 60 * 1000)); // 어제 23:00
-        // Firestore에서 match 컬렉션 가져오기
-        const matchSnapshots = [];
-        if (isMale) {
-            // 남성의 경우 오늘 13:00에 해당하는 데이터 가져오기
-            const datingMatchSnapshot = yield firebase_1.default.collection("datingMatch")
-                .where("datingMatchTime", "==", today13)
-                .get();
-            matchSnapshots.push(datingMatchSnapshot);
-            const meetingMatchSnapshot = yield firebase_1.default.collection("meetingMatch")
-                .where("meetingMatchTime", "==", today13)
-                .get();
-            matchSnapshots.push(meetingMatchSnapshot);
-        }
-        else {
-            // 여성의 경우 어제 23:00에 해당하는 데이터 가져오기
-            const datingMatchSnapshot = yield firebase_1.default.collection("datingMatch")
-                .where("datingMatchTime", "==", yesterday23)
-                .get();
-            matchSnapshots.push(datingMatchSnapshot);
-            const meetingMatchSnapshot = yield firebase_1.default.collection("meetingMatch")
-                .where("meetingMatchTime", "==", yesterday23)
-                .get();
-            matchSnapshots.push(meetingMatchSnapshot);
-        }
-        const matches = matchSnapshots.flatMap((snapshot) => snapshot.docs.map((doc) => doc.data()));
-        console.log("Matches:", matches);
-        const matchUserIds = new Set(matches.flatMap((match) => [
-            match.datingMatchUserIdMale,
-            match.datingMatchUserIdFemale,
-            match.meetingMatchUserIdMale,
-            match.meetingMatchUserIdFemale,
-        ]));
-        console.log("Match User IDs:", matchUserIds);
-        // 중복 제거된 사용자 ID 목록 반환
-        const users = Array.from(matchUserIds).map((id) => ({
-            id,
-            userName: `User_${id}`, // 테스트용 이름
-            userPhone: process.env.TEST_PHONE || "", // 테스트용 전화번호
-            userType: "all", // 정확한 타입 명시
-            userTime: firestore_1.Timestamp.fromDate(new Date()), // 임의의 Timestamp
-        }));
-        console.log("Filtered Users:", users);
-        return users;
+        // const users: User[] = [];
+        const today13 = firestore_1.Timestamp.fromDate(new Date(currentTime.setHours(13, 0, 0, 0)));
+        const yesterday23 = firestore_1.Timestamp.fromDate(new Date(currentTime.getTime() - 14 * 60 * 60 * 1000));
+        // Firestore에서 match 데이터 가져오기
+        console.log("Fetching datingMatch and meetingMatch collections...");
+        const [datingSnapshot, meetingSnapshot] = yield Promise.all([
+            firebase_1.default.collection("datingMatch")
+                .where("datingMatchTime", "in", [yesterday23, today13])
+                .get(),
+            firebase_1.default.collection("meetingMatch")
+                .where("meetingMatchTime", "in", [yesterday23, today13])
+                .get(),
+        ]);
+        console.log("Collections fetched:", {
+            datingCount: datingSnapshot.size,
+            meetingCount: meetingSnapshot.size,
+        });
+        const allMatchDocs = [...datingSnapshot.docs, ...meetingSnapshot.docs];
+        const userMap = new Map();
+        allMatchDocs.forEach((doc) => {
+            var _a;
+            const data = doc.data();
+            const userId = data.userId;
+            const matchType = data.type === "meeting" ? "meeting" : "dating";
+            if (!userMap.has(userId)) {
+                userMap.set(userId, {
+                    id: userId,
+                    userName: `User_${userId}`,
+                    userPhone: process.env.TEST_PHONE || "",
+                    receivedCards: new Set(),
+                });
+            }
+            (_a = userMap.get(userId)) === null || _a === void 0 ? void 0 : _a.receivedCards.add(matchType);
+        });
+        console.log("Filtered Users with Cards:", Array.from(userMap.values()));
+        return Array.from(userMap.values());
     });
 }
-// 메시지 전송 작업 (테스트용)
-function sendMessagesTest(currentTime, isMale) {
+// 메시지 전송 작업
+function sendMessagesTest(currentTime) {
     return __awaiter(this, void 0, void 0, function* () {
-        const users = yield getFilteredUsers(currentTime, isMale);
-        const testPhone = process.env.TEST_PHONE;
+        const users = yield getReceivedCards(currentTime);
         if (users.length === 0) {
             console.log("필터링된 유저가 없습니다.");
             return;
         }
-        // 첫 번째 사용자에게 테스트 메시지 발송
         const firstUser = users[0];
-        console.log("테스트 대상 유저:", firstUser);
-        try {
-            yield sendSMS(testPhone, `(광고) ${firstUser.userName}님, 테스트 메시지입니다. bit.ly/YP-DAY1`);
-            console.log(`테스트 문자 발송 완료: ${testPhone}`);
+        let message = "(광고)[소개팅 / 미팅] 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1";
+        if (firstUser.receivedCards.size === 1) {
+            if (firstUser.receivedCards.has("meeting")) {
+                message = "(광고)[미팅] 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1";
+            }
+            else {
+                message = "(광고)[소개팅] 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1";
+            }
         }
-        catch (error) {
-            console.error("테스트 문자 발송 실패:", error);
-        }
-        // 나머지 사용자 정보는 콘솔에 출력
+        console.log(`[1] ${firstUser.userName}: "${message}"`);
+        yield sendSMS(firstUser.userPhone, message);
         users.slice(1).forEach((user, index) => {
-            console.log(`대상자 [${index + 2}]: ${JSON.stringify(user)}`);
+            let userMessage = "(광고)[소개팅 / 미팅] 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1";
+            if (user.receivedCards.size === 1) {
+                if (user.receivedCards.has("meeting")) {
+                    userMessage = "(광고)[미팅] 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1";
+                }
+                else {
+                    userMessage = "(광고)[소개팅] 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1";
+                }
+            }
+            console.log(`[${index + 2}] ${user.userName}: "${userMessage}"`);
         });
     });
 }
-// main 함수 실행
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const currentTime = new Date();
-        const isMale = true; // 남성 대상 여부
-        // 필터링된 유저 가져오기 및 문자 테스트 전송
-        const filteredUsers = yield getFilteredUsers(currentTime, isMale);
-        if (filteredUsers.length > 0) {
-            yield sendMessagesTest(currentTime, isMale);
-        }
-        else {
-            console.log("필터링된 유저가 없습니다.");
-        }
+        yield sendMessagesTest(currentTime);
     });
 }
 main().catch((error) => {
