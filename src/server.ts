@@ -38,6 +38,10 @@ app.post("/card-message", async (_, res) => {
     }    
 });
 
+// POST /card-delete-allam
+
+  
+
 // 서버 실행
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);

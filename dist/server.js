@@ -44,6 +44,7 @@ app.post("/card-message", (_, res) => __awaiter(void 0, void 0, void 0, function
         console.error(`cardMessage 실행 중 에러: ${err.message}`);
     }
 }));
+// POST /card-delete-allam
 // 서버 실행
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);

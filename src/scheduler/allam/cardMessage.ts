@@ -68,25 +68,23 @@ async function getRecentUsers(): Promise<any[]> {
 }
 
 // 사용자 카드 확인
-async function checkUserCards(user: any, handleDate: Date): Promise<{ meetingCount: number; datingCount: number }> {
+export async function checkUserCards(user: any, handleDate: Date): Promise<{ meetingCards: any[]; datingCards: any[] }> {
   const meetingCards: any[] = [];
   const datingCards: any[] = [];
 
   let maleMatchTime: Date, femaleMatchTime: Date;
 
-  // 기준 시간 계산
   if (handleDate.getHours() >= 23) {
-    maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0)); // 남자: 바로 이전 23시
-    femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000); // 여자: 전전 13시
+    maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0));
+    femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000);
   } else if (handleDate.getHours() >= 13) {
-    maleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0)); // 남자: 바로 이전 13시
-    femaleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000); // 여자: 전전 23시
+    maleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0));
+    femaleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000);
   } else {
-    maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000); // 남자: 전날 23시
-    femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000); // 여자: 전날 13시
+    maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000);
+    femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000);
   }
 
-  // 남자/여자 매칭 타임 확인
   if (user.userGender === 1) {
     const meetingSnapshot = await db.collection("meetingMatch")
       .where("meetingMatchUserIdMale", "==", user.id)
@@ -115,49 +113,54 @@ async function checkUserCards(user: any, handleDate: Date): Promise<{ meetingCou
     datingCards.push(...datingSnapshot.docs.map((doc) => doc.data()));
   }
 
-  return { meetingCount: meetingCards.length, datingCount: datingCards.length };
+  return { meetingCards, datingCards };
 }
+
 
 // 메시지 추출 및 발송 작업
 export async function extractAndSendMessages(log: (message: string) => void): Promise<void> {
-    log("extractAndSendMessages 실행 시작");
-    const handleDate = new Date();
-    const users = await getRecentUsers();
-    const eligibleUsers: any[] = [];
+  log("extractAndSendMessages 실행 시작");
+  const handleDate = new Date();
+  const users = await getRecentUsers();
+  const eligibleUsers: any[] = [];
 
-    for (const user of users) {
-        const { meetingCount, datingCount } = await checkUserCards(user, handleDate);
+  for (const user of users) {
+    // checkUserCards 함수 호출
+    const { meetingCards, datingCards } = await checkUserCards(user, handleDate);
 
-        log(
-            `User: ${user.userPhone}, ${user.userName}, meetingCard: ${meetingCount}, datingCard: ${datingCount}`
-        );
+    // meetingCount와 datingCount 계산
+    const meetingCount = meetingCards.length;
+    const datingCount = datingCards.length;
 
-        if (meetingCount > 0 || datingCount > 0) {
-            eligibleUsers.push({ ...user, meetingCount, datingCount });
-        }
+    log(
+      `User: ${user.userPhone}, ${user.userName}, meetingCard: ${meetingCount}, datingCard: ${datingCount}`
+    );
+
+    if (meetingCount > 0 || datingCount > 0) {
+      eligibleUsers.push({ ...user, meetingCount, datingCount });
     }
+  }
 
-    if (eligibleUsers.length === 0) {
-        log("발송 대상자가 없습니다.");
-        return;
-    }
+  if (eligibleUsers.length === 0) {
+    log("발송 대상자가 없습니다.");
+    return;
+  }
 
-    const firstUser = eligibleUsers[0];
-    const message =
-        firstUser.meetingCount > 0 && firstUser.datingCount > 0
-            ? `(광고) [미팅 / 소개팅] ${firstUser.userName}님, 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1`
-            : firstUser.meetingCount > 0
-            ? `(광고) [미팅] ${firstUser.userName}님, 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1`
-            : `(광고) [소개팅] ${firstUser.userName}님, 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1`;
+  const firstUser = eligibleUsers[0];
+  const message =
+    firstUser.meetingCount > 0 && firstUser.datingCount > 0
+      ? `(광고) [미팅 / 소개팅] ${firstUser.userName}님, 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1`
+      : firstUser.meetingCount > 0
+      ? `(광고) [미팅] ${firstUser.userName}님, 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1`
+      : `(광고) [소개팅] ${firstUser.userName}님, 일상에 설렘을 더할 오늘의 인연이 도착했어요! bit.ly/YP-DAY1`;
 
-    log(`[TEST] Sending message to: ${firstUser.userPhone}, Content: "${message}"`);
-    await sendSMS(testPhone!, message);
+  log(`[TEST] Sending message to: ${firstUser.userPhone}, Content: "${message}"`);
+  await sendSMS(testPhone!, message);
 }
 
 
-
 // 스케줄러 설정
- // 지금(이건 테스트를 위해 집어넣음)
+// 지금(이건 테스트를 위해 집어넣음)
 cron.schedule("58 1 * * *", () => {
     const log = (message: string) => console.log(message); // 로그 함수 정의
     extractAndSendMessages(log);

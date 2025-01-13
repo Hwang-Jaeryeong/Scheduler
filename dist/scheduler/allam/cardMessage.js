@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendSMS = sendSMS;
+exports.checkUserCards = checkUserCards;
 exports.extractAndSendMessages = extractAndSendMessages;
 const dotenv_1 = __importDefault(require("dotenv"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -84,20 +85,18 @@ function checkUserCards(user, handleDate) {
         const meetingCards = [];
         const datingCards = [];
         let maleMatchTime, femaleMatchTime;
-        // 기준 시간 계산
         if (handleDate.getHours() >= 23) {
-            maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0)); // 남자: 바로 이전 23시
-            femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000); // 여자: 전전 13시
+            maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0));
+            femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000);
         }
         else if (handleDate.getHours() >= 13) {
-            maleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0)); // 남자: 바로 이전 13시
-            femaleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000); // 여자: 전전 23시
+            maleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0));
+            femaleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000);
         }
         else {
-            maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000); // 남자: 전날 23시
-            femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000); // 여자: 전날 13시
+            maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000);
+            femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000);
         }
-        // 남자/여자 매칭 타임 확인
         if (user.userGender === 1) {
             const meetingSnapshot = yield firebase_1.default.collection("meetingMatch")
                 .where("meetingMatchUserIdMale", "==", user.id)
@@ -122,7 +121,7 @@ function checkUserCards(user, handleDate) {
             meetingCards.push(...meetingSnapshot.docs.map((doc) => doc.data()));
             datingCards.push(...datingSnapshot.docs.map((doc) => doc.data()));
         }
-        return { meetingCount: meetingCards.length, datingCount: datingCards.length };
+        return { meetingCards, datingCards };
     });
 }
 // 메시지 추출 및 발송 작업
@@ -133,7 +132,11 @@ function extractAndSendMessages(log) {
         const users = yield getRecentUsers();
         const eligibleUsers = [];
         for (const user of users) {
-            const { meetingCount, datingCount } = yield checkUserCards(user, handleDate);
+            // checkUserCards 함수 호출
+            const { meetingCards, datingCards } = yield checkUserCards(user, handleDate);
+            // meetingCount와 datingCount 계산
+            const meetingCount = meetingCards.length;
+            const datingCount = datingCards.length;
             log(`User: ${user.userPhone}, ${user.userName}, meetingCard: ${meetingCount}, datingCard: ${datingCount}`);
             if (meetingCount > 0 || datingCount > 0) {
                 eligibleUsers.push(Object.assign(Object.assign({}, user), { meetingCount, datingCount }));
