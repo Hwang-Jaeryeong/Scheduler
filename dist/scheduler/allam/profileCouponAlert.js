@@ -12,58 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendSMS = sendSMS;
 const dotenv_1 = __importDefault(require("dotenv"));
-const crypto_1 = __importDefault(require("crypto"));
-const axios_1 = __importDefault(require("axios"));
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
 const node_cron_1 = __importDefault(require("node-cron"));
 const firestore_1 = require("firebase-admin/firestore");
+const sms_1 = require("../sms");
 dotenv_1.default.config();
-const accessKey = process.env.SENS_ACCESS_KEY;
-const secretKey = process.env.SENS_SECRET_KEY;
-const serviceId = process.env.SENS_SERVICE_ID;
 const testPhone = process.env.TEST_PHONE;
-const url = `https://sens.apigw.ntruss.com/sms/v2/services/${serviceId}/messages`;
-if (!accessKey || !secretKey || !serviceId || !testPhone) {
-    throw new Error("환경 변수가 올바르게 설정되지 않았습니다.");
-}
-// 서명 생성 함수
-function makeSignature(timestamp) {
-    const method = "POST";
-    const uri = `/sms/v2/services/${serviceId}/messages`;
-    const message = `${method} ${uri}\n${timestamp}\n${accessKey}`;
-    const hmac = crypto_1.default.createHmac("sha256", secretKey);
-    hmac.update(message);
-    return hmac.digest("base64");
-}
-// 문자 전송 함수
-function sendSMS(phone, message) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a;
-        const timestamp = Date.now().toString();
-        const signature = makeSignature(timestamp);
-        const headers = {
-            "Content-Type": "application/json; charset=utf-8",
-            "x-ncp-apigw-timestamp": timestamp,
-            "x-ncp-iam-access-key": accessKey,
-            "x-ncp-apigw-signature-v2": signature,
-        };
-        const body = {
-            type: "SMS",
-            from: process.env.SENDER_PHONE || "",
-            content: message,
-            messages: [{ to: phone }],
-        };
-        try {
-            const response = yield axios_1.default.post(url, body, { headers });
-            console.log(`SMS 발송 성공: ${response.data.requestId}`);
-        }
-        catch (error) {
-            console.error("SMS 요청 에러:", ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
-        }
-    });
-}
 // 기준 타임 계산 함수 (그 시각 기준)
 function calculateLastTime(now) {
     const times = [13, 23]; // 기준 타임 (13:00, 23:00)
@@ -162,7 +117,7 @@ function executeProfileCouponAlert() {
             if (message) {
                 console.log(`Sending message to ${user.userPhone}: "${message}"`);
                 // 실제 메시지 전송 코드
-                // await sendSMS(user.userPhone, message);
+                yield (0, sms_1.sendSMS)(testPhone, message);
                 sentNumbers.add(user.userPhone);
                 messageSentCount++;
             }

@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cardMessage_1 = require("./scheduler/allam/cardMessage");
+const cardDeleteAllam_1 = require("./scheduler/allam/cardDeleteAllam");
 const app = (0, express_1.default)();
 const port = 3000;
 // JSON 요청 처리 미들웨어
@@ -45,6 +46,26 @@ app.post("/card-message", (_, res) => __awaiter(void 0, void 0, void 0, function
     }
 }));
 // POST /card-delete-allam
+app.post("/card-delete-allam", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const handleDate = req.body.handleDate ? new Date(req.body.handleDate) : new Date();
+        // cardDeleteAllam 실행
+        const logs = yield (0, cardDeleteAllam_1.executeCardDeleteAllam)(handleDate);
+        res.status(200).send({
+            success: true,
+            message: "executeCardDeleteAllam 실행 완료",
+            logs: logs,
+        });
+    }
+    catch (error) {
+        console.error(`executeCardDeleteAllam 실행 중 에러: ${error.message}`);
+        res.status(500).send({
+            success: false,
+            message: "executeCardDeleteAllam 실행 중 에러 발생",
+            error: error.message,
+        });
+    }
+}));
 // 서버 실행
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);

@@ -12,59 +12,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendSMS = sendSMS;
+exports.executeCardDeleteAllam = executeCardDeleteAllam;
 const dotenv_1 = __importDefault(require("dotenv"));
-const crypto_1 = __importDefault(require("crypto"));
-const axios_1 = __importDefault(require("axios"));
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
-const node_cron_1 = __importDefault(require("node-cron"));
+// import cron from "node-cron";
 const cardMessage_1 = require("./cardMessage");
-const kakaoAlimtalk_1 = require("../kakaoAlimtalk");
+// import { sendKakaoAlimtalk } from "../kakaoAlimtalk";
+// import { sendSMS } from "../sms"
 dotenv_1.default.config();
-const accessKey = process.env.SENS_ACCESS_KEY;
-const secretKey = process.env.SENS_SECRET_KEY;
-const serviceId = process.env.SENS_SERVICE_ID;
-const testPhone = process.env.TEST_PHONE;
-const url = `https://sens.apigw.ntruss.com/sms/v2/services/${serviceId}/messages`;
-if (!accessKey || !secretKey || !serviceId || !testPhone) {
-    throw new Error("환경 변수가 올바르게 설정되지 않았습니다.");
-}
-// 서명 생성 함수
-function makeSignature(timestamp) {
-    const method = "POST";
-    const uri = `/sms/v2/services/${serviceId}/messages`;
-    const message = `${method} ${uri}\n${timestamp}\n${accessKey}`;
-    const hmac = crypto_1.default.createHmac("sha256", secretKey);
-    hmac.update(message);
-    return hmac.digest("base64");
-}
-// 문자 전송 함수
-function sendSMS(phone, message) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a;
-        const timestamp = Date.now().toString();
-        const signature = makeSignature(timestamp);
-        const headers = {
-            "Content-Type": "application/json; charset=utf-8",
-            "x-ncp-apigw-timestamp": timestamp,
-            "x-ncp-iam-access-key": accessKey,
-            "x-ncp-apigw-signature-v2": signature,
-        };
-        const body = {
-            type: "SMS",
-            from: process.env.SENDER_PHONE || "",
-            content: message,
-            messages: [{ to: phone }],
-        };
-        try {
-            const response = yield axios_1.default.post(url, body, { headers });
-            console.log(`SMS 발송 성공: ${response.data.requestId}`);
-        }
-        catch (error) {
-            console.error("SMS 요청 에러:", ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
-        }
-    });
-}
+// const testPhone = process.env.TEST_PHONE;
 // 수락/거절 여부 확인
 function hasAcceptedOrDeclined(matchRows, gender) {
     return matchRows.some((row) => row[`${gender}Check`] === 3 || row[`${gender}Check`] === 4);
@@ -108,6 +64,7 @@ function generateDeleteMessage(userName, isFavorite, hasAcceptedOrDeclined, hasR
 // 실행 함수
 function executeCardDeleteAllam(handleDate) {
     return __awaiter(this, void 0, void 0, function* () {
+        const logs = []; // 로그 저장 배열
         const users = yield firebase_1.default.collection("user").get().then((snapshot) => snapshot.docs.map((doc) => ({
             id: doc.id,
             userName: doc.data().userName,
@@ -121,66 +78,65 @@ function executeCardDeleteAllam(handleDate) {
             if (sentNumbers.has(user.userPhone))
                 continue;
             const { meetingCards, datingCards } = yield (0, cardMessage_1.checkUserCards)(user, handleDate);
-            // `matchRows`를 올바르게 결합
             const matchRows = [...meetingCards, ...datingCards];
             if (matchRows.length === 0)
-                continue; // 카드가 없으면 스킵
+                continue;
             const gender = user.userGender === 1 ? "Male" : "Female";
             const partnerGender = user.userGender === 1 ? "Female" : "Male";
             const acceptedOrDeclined = hasAcceptedOrDeclined(matchRows, gender);
             if (acceptedOrDeclined)
                 continue;
-            // 각각의 매칭 타입에 대해 `checkFavoriteCards` 호출
             const isFavoriteMeeting = yield checkFavoriteCards(meetingCards, partnerGender, "meetingMatch");
             const isFavoriteDating = yield checkFavoriteCards(datingCards, partnerGender, "datingMatch");
-            // 둘 중 하나라도 true면 호감 카드로 판단
             const isFavorite = isFavoriteMeeting || isFavoriteDating;
+            // 카드 수신 여부 확인
+            const hasReceivedCard = matchRows.length > 0;
             if (isFavorite) {
                 favoriteCardCount++;
             }
             else {
                 generalCardCount++;
             }
-            const message = generateDeleteMessage(user.userName, isFavorite, acceptedOrDeclined, matchRows.length > 0 // `hasReceivedCard` 판단
-            );
-            // const messageData = {
-            //   userName: user.userName,
-            //   handleDate: handleDate.toLocaleString(),
+            const message = generateDeleteMessage(user.userName, isFavorite, acceptedOrDeclined, hasReceivedCard);
+            // type 값 설정 로직
+            // let type: string;
+            // if (isFavorite && !acceptedOrDeclined) {
+            //   type = "호감";
+            // } else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined) {
+            //   type = "일반";
+            // } else {
+            //   type = "기타"; // 기본값 설정 (조건이 없을 경우)
+            // }
+            // // templateVariables 생성
+            // const templateVariables = {
+            //   user_name: user.userName, // 사용자 이름
+            //   type: type, // 조건에 따른 타입 설정
+            //   deadline: "2025-01-31", // 마감 기한
             // };
-            // 알림톡 템플릿 변수 생성
-            const templateVariables = {
-                user_name: user.userName, // 사용자 이름
-                type: isFavorite ? "호감" : "일반", // 카드 종류
-                deadline: "2025-01-31", // 마감 기한 (예시)
-            };
             try {
-                // 카카오 알림톡 발송
-                yield (0, kakaoAlimtalk_1.sendKakaoAlimtalk)([testPhone], templateVariables);
-                console.log(`Sending message to ${user.userPhone}: "${message}"`);
-                console.log(`알림톡 전송 성공: ${user.userPhone}`);
+                // await sendKakaoAlimtalk([testPhone!], templateVariables);
+                // logs.push(`알림톡 전송 성공: ${user.userPhone}`);
                 sentNumbers.add(user.userPhone);
             }
             catch (error) {
-                console.error(`알림톡 전송 실패: ${user.userPhone}`, error);
+                logs.push(`알림톡 전송 실패: ${user.userPhone}, Error: ${error}`);
             }
-            // if (message) {
-            //   console.log(`Sending message to ${user.userPhone}: "${message}"`);
-            //   // 메시지 전송 코드
-            //   // await sendSMS(user.userPhone, message);
-            //   // 카카오 알림톡 발송
-            //   //await sendKakaoAlimtalk(user.userPhone, messageData);
-            //   await sendKakaoAlimtalk(testPhone!, messageData)
-            //   sentNumbers.add(user.userPhone);
-            // }
+            if (message) {
+                // logs.push(`Sending SMS to ${user.userPhone}: "${message}"`);
+                // await sendSMS(testPhone!, message);
+                sentNumbers.add(user.userPhone);
+            }
         }
-        console.log(`총 일반 카드 발송: ${generalCardCount}명`);
-        console.log(`총 호감 카드 발송: ${favoriteCardCount}명`);
+        logs.push(`총 일반 카드 발송: ${generalCardCount}명`);
+        logs.push(`총 호감 카드 발송: ${favoriteCardCount}명`);
+        return logs; // 로그 반환
     });
 }
-// 스케줄러 설정
-node_cron_1.default.schedule("47 12 * * *", () => {
-    console.log("Executing Card Delete Alarm Scheduler...");
-    executeCardDeleteAllam(new Date());
-});
+executeCardDeleteAllam(new Date());
+// // 스케줄러 설정
+// cron.schedule("19 17 * * *", () => {
+//   console.log("Executing Card Delete Alarm Scheduler...");
+//   executeCardDeleteAllam(new Date());
+// });
 // cron.schedule("0 11 * * *", () => executeCardDeleteAllam(new Date()));
 // cron.schedule("0 21 * * *", () => executeCardDeleteAllam(new Date()));

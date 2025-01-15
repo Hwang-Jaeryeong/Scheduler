@@ -1,5 +1,6 @@
 import express from "express";
 import { extractAndSendMessages } from "./scheduler/allam/cardMessage";
+import { executeCardDeleteAllam } from "./scheduler/allam/cardDeleteAllam";
 
 const app = express();
 const port = 3000;
@@ -39,7 +40,28 @@ app.post("/card-message", async (_, res) => {
 });
 
 // POST /card-delete-allam
-
+app.post("/card-delete-allam", async (req, res) => {
+    try {
+      const handleDate = req.body.handleDate ? new Date(req.body.handleDate) : new Date();
+  
+      // cardDeleteAllam 실행
+      const logs = await executeCardDeleteAllam(handleDate);
+  
+      res.status(200).send({
+        success: true,
+        message: "executeCardDeleteAllam 실행 완료",
+        logs: logs,
+      });
+    } catch (error: any) {
+      console.error(`executeCardDeleteAllam 실행 중 에러: ${error.message}`);
+      res.status(500).send({
+        success: false,
+        message: "executeCardDeleteAllam 실행 중 에러 발생",
+        error: error.message,
+      });
+    }
+  });
+  
   
 
 // 서버 실행

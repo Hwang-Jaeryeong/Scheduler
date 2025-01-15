@@ -26,7 +26,7 @@ function calculateLastTime(now: Date): Date {
   return lastTime;
 }
 
-// 선결제 여부 확인
+// 선결제 여부 확인 : 수정 필요
 async function checkPrepaid(userId: string, lastTime: Date): Promise<boolean> {
   const twoTimesAgo = new Date(lastTime);
   twoTimesAgo.setHours(lastTime.getHours() === 23 ? 13 : 23);
