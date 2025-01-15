@@ -19,6 +19,7 @@ const axios_1 = __importDefault(require("axios"));
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
 const node_cron_1 = __importDefault(require("node-cron"));
 const cardMessage_1 = require("./cardMessage");
+const kakaoAlimtalk_1 = require("../kakaoAlimtalk");
 dotenv_1.default.config();
 const accessKey = process.env.SENS_ACCESS_KEY;
 const secretKey = process.env.SENS_SECRET_KEY;
@@ -142,19 +143,42 @@ function executeCardDeleteAllam(handleDate) {
             }
             const message = generateDeleteMessage(user.userName, isFavorite, acceptedOrDeclined, matchRows.length > 0 // `hasReceivedCard` 판단
             );
-            if (message) {
+            // const messageData = {
+            //   userName: user.userName,
+            //   handleDate: handleDate.toLocaleString(),
+            // };
+            // 알림톡 템플릿 변수 생성
+            const templateVariables = {
+                user_name: user.userName, // 사용자 이름
+                type: isFavorite ? "호감" : "일반", // 카드 종류
+                deadline: "2025-01-31", // 마감 기한 (예시)
+            };
+            try {
+                // 카카오 알림톡 발송
+                yield (0, kakaoAlimtalk_1.sendKakaoAlimtalk)([testPhone], templateVariables);
                 console.log(`Sending message to ${user.userPhone}: "${message}"`);
-                // 실제 메시지 전송 코드
-                // await sendSMS(user.userPhone, message);
+                console.log(`알림톡 전송 성공: ${user.userPhone}`);
                 sentNumbers.add(user.userPhone);
             }
+            catch (error) {
+                console.error(`알림톡 전송 실패: ${user.userPhone}`, error);
+            }
+            // if (message) {
+            //   console.log(`Sending message to ${user.userPhone}: "${message}"`);
+            //   // 메시지 전송 코드
+            //   // await sendSMS(user.userPhone, message);
+            //   // 카카오 알림톡 발송
+            //   //await sendKakaoAlimtalk(user.userPhone, messageData);
+            //   await sendKakaoAlimtalk(testPhone!, messageData)
+            //   sentNumbers.add(user.userPhone);
+            // }
         }
         console.log(`총 일반 카드 발송: ${generalCardCount}명`);
         console.log(`총 호감 카드 발송: ${favoriteCardCount}명`);
     });
 }
 // 스케줄러 설정
-node_cron_1.default.schedule("50 15 * * *", () => {
+node_cron_1.default.schedule("47 12 * * *", () => {
     console.log("Executing Card Delete Alarm Scheduler...");
     executeCardDeleteAllam(new Date());
 });
