@@ -1,22 +1,21 @@
 import dotenv from "dotenv";
 import db from "../../firebase/firebase";
-import cron from "node-cron";
+// import cron from "node-cron";
 import { Timestamp } from "firebase-admin/firestore";
-import { sendSMS } from "../sms"
+// import { sendSMS } from "../sms"
 
 dotenv.config();
-const testPhone = process.env.TEST_PHONE;
+// const testPhone = process.env.TEST_PHONE;
 
 
-// 기준 타임 계산 함수 (그 시각 기준)
-function calculateLastTime(now: Date): Date {
+function calculateLastTime(): Date {
   const times = [13, 23]; // 기준 타임 (13:00, 23:00)
+  const now = Timestamp.now().toDate(); // Firebase Admin 서버의 현재 시간
   const lastTime = new Date(now);
 
-  // 현재 시간을 기준으로 가장 가까운 이전 타임 계산
   if (now.getHours() < times[0]) {
-    lastTime.setDate(now.getDate() - 1); // 전날 23:00
-    lastTime.setHours(times[1], 0, 0, 0);
+    lastTime.setDate(now.getDate() - 1); // 전날로 이동
+    lastTime.setHours(times[1], 0, 0, 0); // 전날 23:00
   } else if (now.getHours() < times[1]) {
     lastTime.setHours(times[0], 0, 0, 0); // 오늘 13:00
   } else {
@@ -26,31 +25,54 @@ function calculateLastTime(now: Date): Date {
   return lastTime;
 }
 
+function calculateTwoTimesAgo(lastTime: Date): Date {
+  const twoTimesAgo = new Date(lastTime);
+
+  if (lastTime.getHours() === 13) {
+    twoTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 이동
+    twoTimesAgo.setHours(23); // 전날 23:00
+  } else {
+    twoTimesAgo.setHours(13); // 오늘 13:00
+  }
+
+  twoTimesAgo.setMinutes(0, 0, 0); // 분과 초를 초기화
+  return twoTimesAgo;
+}
+
+
 // 선결제 여부 확인 : 수정 필요
 async function checkPrepaid(userId: string, lastTime: Date): Promise<boolean> {
-  const twoTimesAgo = new Date(lastTime);
-  twoTimesAgo.setHours(lastTime.getHours() === 23 ? 13 : 23);
-  if (lastTime.getHours() === 13) {
-    twoTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 변경
-    }
+  const twoTimesAgo = calculateTwoTimesAgo(lastTime);
 
-  // 두 타임 전 row를 가져옴
+  // 1분 전과 1분 후의 범위를 설정
+  const startTime = new Date(twoTimesAgo);
+  startTime.setMinutes(twoTimesAgo.getMinutes() - 1);
+  const endTime = new Date(twoTimesAgo);
+  endTime.setMinutes(twoTimesAgo.getMinutes() + 1);
+
+  // 두 타임 전 row를 가져옴 (1분 전 ~ 1분 후 범위)
   const snapshots = await Promise.all([
     db.collection("meetingMatch")
       .where("meetingMatchUserIdMale", "==", userId)
-      .where("meetingMatchTime", "==", Timestamp.fromDate(twoTimesAgo))
+      .where("meetingMatchTime", ">=", Timestamp.fromDate(startTime))
+      .where("meetingMatchTime", "<=", Timestamp.fromDate(endTime))
       .get(),
     db.collection("datingMatch")
       .where("datingMatchUserIdMale", "==", userId)
-      .where("datingMatchTime", "==", Timestamp.fromDate(twoTimesAgo))
+      .where("datingMatchTime", ">=", Timestamp.fromDate(startTime))
+      .where("datingMatchTime", "<=", Timestamp.fromDate(endTime))
       .get(),
   ]);
 
   // 각 스냅샷에서 MatchPayMale === 3인 row가 하나라도 있는지 확인
   return snapshots.some((snapshot) =>
-    snapshot.docs.some((doc) => doc.data().meetingMatchPayMale === 3 || doc.data().datingMatchPayMale === 3)
+    snapshot.docs.some(
+      (doc) =>
+        doc.data().meetingMatchPayMale == 3 || doc.data().datingMatchPayMale == 3
+    )
   );
 }
+
 
 // 메시지 생성 함수
 function generateProfileCouponMessage(isPrepaid: boolean, has400Picks: boolean): string | null {
@@ -66,10 +88,13 @@ function generateProfileCouponMessage(isPrepaid: boolean, has400Picks: boolean):
 
 // 실행 함수
 async function executeProfileCouponAlert(): Promise<void> {
-  const now = Timestamp.now().toDate(); // Firebase 서버 시간 기준
-  const lastTime = calculateLastTime(now); // 그 시각 계산
+  console.log("start");
+  const lastTime = calculateLastTime();
 
-  const users = await db.collection("user").get().then((snapshot) =>
+  const users = await db.collection("user")
+    .where("userGender", "==", 1)
+    .get()
+    .then((snapshot) =>
     snapshot.docs.map((doc) => ({
         id: doc.id,
         userName: doc.data().userName,
@@ -104,8 +129,8 @@ async function executeProfileCouponAlert(): Promise<void> {
 
     // 활성화 여부 확인
     const isActive =
-      (user.meetingIsOn && user.meetingGroup === "A") ||
-      (user.datingIsOn && user.datingGroup === "A");
+      (user.meetingIsOn && user.meetingGroup == "A") ||
+      (user.datingIsOn && user.datingGroup == "A");
     if (isActive) activeUsersCount++;
 
     // 메시지 생성
@@ -114,7 +139,7 @@ async function executeProfileCouponAlert(): Promise<void> {
     if (message) {
       console.log(`Sending message to ${user.userPhone}: "${message}"`);
       // 실제 메시지 전송 코드
-      await sendSMS(testPhone!, message);
+      // await sendSMS(testPhone!, message);
       sentNumbers.add(user.userPhone);
       messageSentCount++;
     }
@@ -127,11 +152,9 @@ async function executeProfileCouponAlert(): Promise<void> {
   console.log(`활성화 유저 수: ${activeUsersCount}`);
   console.log(`메시지 발송 유저 수: ${messageSentCount}`);
 }
-// 스케줄러 (Test 용용)
-cron.schedule("59 13 * * *", () => {
-    console.log("Executing Card Delete Alarm Scheduler...");
-    executeProfileCouponAlert();
-  });
+
+executeProfileCouponAlert();
+
 
 // // 스케줄러 설정
 // cron.schedule("0 13 * * *", () => {

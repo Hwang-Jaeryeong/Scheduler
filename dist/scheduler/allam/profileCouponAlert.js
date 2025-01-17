@@ -14,19 +14,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
-const node_cron_1 = __importDefault(require("node-cron"));
+// import cron from "node-cron";
 const firestore_1 = require("firebase-admin/firestore");
-const sms_1 = require("../sms");
+// import { sendSMS } from "../sms"
 dotenv_1.default.config();
-const testPhone = process.env.TEST_PHONE;
-// 기준 타임 계산 함수 (그 시각 기준)
-function calculateLastTime(now) {
+// const testPhone = process.env.TEST_PHONE;
+function calculateLastTime() {
     const times = [13, 23]; // 기준 타임 (13:00, 23:00)
+    const now = firestore_1.Timestamp.now().toDate(); // Firebase Admin 서버의 현재 시간
     const lastTime = new Date(now);
-    // 현재 시간을 기준으로 가장 가까운 이전 타임 계산
     if (now.getHours() < times[0]) {
-        lastTime.setDate(now.getDate() - 1); // 전날 23:00
-        lastTime.setHours(times[1], 0, 0, 0);
+        lastTime.setDate(now.getDate() - 1); // 전날로 이동
+        lastTime.setHours(times[1], 0, 0, 0); // 전날 23:00
     }
     else if (now.getHours() < times[1]) {
         lastTime.setHours(times[0], 0, 0, 0); // 오늘 13:00
@@ -36,27 +35,53 @@ function calculateLastTime(now) {
     }
     return lastTime;
 }
-// 선결제 여부 확인
+// function calculateTwoTimesAgo(lastTime: Date): Date {
+//   const twoTimesAgo = new Date(lastTime);
+//   if (lastTime.getHours() === 13) {
+//     twoTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 이동
+//     twoTimesAgo.setHours(23); // 전날 23:00
+//   } else {
+//     twoTimesAgo.setHours(13); // 오늘 13:00
+//   }
+//   twoTimesAgo.setMinutes(0, 0, 0); // 분과 초를 초기화
+//   return twoTimesAgo;
+// }
+function calculateThreeTimesAgo(lastTime) {
+    const threeTimesAgo = new Date(lastTime);
+    if (lastTime.getHours() === 13) {
+        threeTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 이동
+        threeTimesAgo.setHours(13, 0, 0, 0); // 전날 13:00
+    }
+    else if (lastTime.getHours() === 23) {
+        threeTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 이동
+        threeTimesAgo.setHours(23, 0, 0, 0); // 전날 23:00
+    }
+    return threeTimesAgo;
+}
+// 선결제 여부 확인 : 수정 필요
 function checkPrepaid(userId, lastTime) {
     return __awaiter(this, void 0, void 0, function* () {
-        const twoTimesAgo = new Date(lastTime);
-        twoTimesAgo.setHours(lastTime.getHours() === 23 ? 13 : 23);
-        if (lastTime.getHours() === 13) {
-            twoTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 변경
-        }
-        // 두 타임 전 row를 가져옴
+        const threeTimesAgo = calculateThreeTimesAgo(lastTime);
+        // 1분 전과 1분 후의 범위를 설정
+        const startTime = new Date(threeTimesAgo);
+        startTime.setMinutes(threeTimesAgo.getMinutes() - 1);
+        const endTime = new Date(threeTimesAgo);
+        endTime.setMinutes(threeTimesAgo.getMinutes() + 1);
+        // 세 타임 전 row를 가져옴 (1분 전 ~ 1분 후 범위)
         const snapshots = yield Promise.all([
             firebase_1.default.collection("meetingMatch")
                 .where("meetingMatchUserIdMale", "==", userId)
-                .where("meetingMatchTime", "==", firestore_1.Timestamp.fromDate(twoTimesAgo))
+                .where("meetingMatchTime", ">=", firestore_1.Timestamp.fromDate(startTime))
+                .where("meetingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get(),
             firebase_1.default.collection("datingMatch")
                 .where("datingMatchUserIdMale", "==", userId)
-                .where("datingMatchTime", "==", firestore_1.Timestamp.fromDate(twoTimesAgo))
+                .where("datingMatchTime", ">=", firestore_1.Timestamp.fromDate(startTime))
+                .where("datingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get(),
         ]);
         // 각 스냅샷에서 MatchPayMale === 3인 row가 하나라도 있는지 확인
-        return snapshots.some((snapshot) => snapshot.docs.some((doc) => doc.data().meetingMatchPayMale === 3 || doc.data().datingMatchPayMale === 3));
+        return snapshots.some((snapshot) => snapshot.docs.some((doc) => doc.data().meetingMatchPayMale == 3 || doc.data().datingMatchPayMale == 3));
     });
 }
 // 메시지 생성 함수
@@ -73,9 +98,12 @@ function generateProfileCouponMessage(isPrepaid, has400Picks) {
 // 실행 함수
 function executeProfileCouponAlert() {
     return __awaiter(this, void 0, void 0, function* () {
-        const now = firestore_1.Timestamp.now().toDate(); // Firebase 서버 시간 기준
-        const lastTime = calculateLastTime(now); // 그 시각 계산
-        const users = yield firebase_1.default.collection("user").get().then((snapshot) => snapshot.docs.map((doc) => {
+        console.log("start");
+        const lastTime = calculateLastTime();
+        const users = yield firebase_1.default.collection("user")
+            .where("userGender", "==", 1)
+            .get()
+            .then((snapshot) => snapshot.docs.map((doc) => {
             var _a, _b, _c, _d;
             return ({
                 id: doc.id,
@@ -108,16 +136,16 @@ function executeProfileCouponAlert() {
             if (has400Picks)
                 picksUsersCount++;
             // 활성화 여부 확인
-            const isActive = (user.meetingIsOn && user.meetingGroup === "A") ||
-                (user.datingIsOn && user.datingGroup === "A");
+            const isActive = (user.meetingIsOn && user.meetingGroup == "A") ||
+                (user.datingIsOn && user.datingGroup == "A");
             if (isActive)
                 activeUsersCount++;
             // 메시지 생성
             const message = generateProfileCouponMessage(isPrepaid, has400Picks && isActive);
             if (message) {
-                console.log(`Sending message to ${user.userPhone}: "${message}"`);
+                // console.log(`Sending message to ${user.userPhone}: "${message}"`);
                 // 실제 메시지 전송 코드
-                yield (0, sms_1.sendSMS)(testPhone, message);
+                // await sendSMS(testPhone!, message);
                 sentNumbers.add(user.userPhone);
                 messageSentCount++;
             }
@@ -127,14 +155,10 @@ function executeProfileCouponAlert() {
         console.log(`선결제 유저 수: ${prepaidUsersCount}`);
         console.log(`400픽 보유 유저 수: ${picksUsersCount}`);
         console.log(`활성화 유저 수: ${activeUsersCount}`);
-        console.log(`메시지 발송 유저 수: ${messageSentCount}`);
+        // console.log(`메시지 발송 유저 수: ${messageSentCount}`);
     });
 }
-// 스케줄러 (Test 용용)
-node_cron_1.default.schedule("59 13 * * *", () => {
-    console.log("Executing Card Delete Alarm Scheduler...");
-    executeProfileCouponAlert();
-});
+executeProfileCouponAlert();
 // // 스케줄러 설정
 // cron.schedule("0 13 * * *", () => {
 //   console.log("Executing Profile Coupon Alert Scheduler at 13:00...");

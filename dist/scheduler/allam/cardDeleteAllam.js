@@ -64,6 +64,7 @@ function generateDeleteMessage(userName, isFavorite, hasAcceptedOrDeclined, hasR
 // 실행 함수
 function executeCardDeleteAllam(handleDate) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log("start");
         const logs = []; // 로그 저장 배열
         const users = yield firebase_1.default.collection("user").get().then((snapshot) => snapshot.docs.map((doc) => ({
             id: doc.id,
