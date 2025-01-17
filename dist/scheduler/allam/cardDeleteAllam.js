@@ -17,10 +17,10 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
 // import cron from "node-cron";
 const cardMessage_1 = require("./cardMessage");
-// import { sendKakaoAlimtalk } from "../kakaoAlimtalk";
+const kakaoAlimtalk_1 = require("../kakaoAlimtalk");
 // import { sendSMS } from "../sms"
 dotenv_1.default.config();
-// const testPhone = process.env.TEST_PHONE;
+const testPhone = process.env.TEST_PHONE;
 // 수락/거절 여부 확인
 function hasAcceptedOrDeclined(matchRows, gender) {
     return matchRows.some((row) => row[`${gender}Check`] === 3 || row[`${gender}Check`] === 4);
@@ -51,16 +51,21 @@ function checkFavoriteCards(matchRows, partnerGender, type) {
         return false; // 모든 row가 조건을 만족하지 못한 경우
     });
 }
-// 메시지 생성
-function generateDeleteMessage(userName, isFavorite, hasAcceptedOrDeclined, hasReceivedCard) {
-    if (isFavorite && !hasAcceptedOrDeclined) {
-        return `(광고) ${userName}님, 호감 - 한 시간 뒤 어젯밤 프로필이 사라져요! 지금 확인하러 가요. bit.ly/YP-DAY1`;
-    }
-    if (!isFavorite && hasReceivedCard && !hasAcceptedOrDeclined) {
-        return `(광고) ${userName}님, 일반 - 한 시간 뒤 어젯밤 프로필이 사라져요! 지금 확인하러 가요. bit.ly/YP-DAY1`;
-    }
-    return null;
-}
+// // 메시지 생성
+// function generateDeleteMessage(
+//   userName: string,
+//   isFavorite: boolean,
+//   hasAcceptedOrDeclined: boolean,
+//   hasReceivedCard: boolean
+// ): string | null {
+//   if (isFavorite && !hasAcceptedOrDeclined) {
+//     return `(광고) ${userName}님, 호감 - 한 시간 뒤 어젯밤 프로필이 사라져요! 지금 확인하러 가요. bit.ly/YP-DAY1`;
+//   }
+//   if (!isFavorite && hasReceivedCard && !hasAcceptedOrDeclined) {
+//     return `(광고) ${userName}님, 일반 - 한 시간 뒤 어젯밤 프로필이 사라져요! 지금 확인하러 가요. bit.ly/YP-DAY1`;
+//   }
+//   return null;
+// }
 // 실행 함수
 function executeCardDeleteAllam(handleDate) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -98,35 +103,44 @@ function executeCardDeleteAllam(handleDate) {
             else {
                 generalCardCount++;
             }
-            const message = generateDeleteMessage(user.userName, isFavorite, acceptedOrDeclined, hasReceivedCard);
+            // const message = generateDeleteMessage(
+            //   user.userName,
+            //   isFavorite,
+            //   acceptedOrDeclined,
+            //   hasReceivedCard
+            // );
             // type 값 설정 로직
-            // let type: string;
-            // if (isFavorite && !acceptedOrDeclined) {
-            //   type = "호감";
-            // } else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined) {
-            //   type = "일반";
-            // } else {
-            //   type = "기타"; // 기본값 설정 (조건이 없을 경우)
-            // }
-            // // templateVariables 생성
-            // const templateVariables = {
-            //   user_name: user.userName, // 사용자 이름
-            //   type: type, // 조건에 따른 타입 설정
-            //   deadline: "2025-01-31", // 마감 기한
-            // };
+            let type;
+            if (isFavorite && !acceptedOrDeclined) {
+                type = "호감";
+            }
+            else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined) {
+                type = "일반";
+            }
+            else {
+                type = "기타"; // 기본값 설정 (조건이 없을 경우)
+            }
+            // templateVariables 생성
+            const templateVariables = {
+                user_name: user.userName, // 사용자 이름
+                type: type, // 조건에 따른 타입 설정
+                deadline: "2025-01-31", // 마감 기한
+            };
+            // 카카오 알림톡
             try {
-                // await sendKakaoAlimtalk([testPhone!], templateVariables);
-                // logs.push(`알림톡 전송 성공: ${user.userPhone}`);
+                yield (0, kakaoAlimtalk_1.sendKakaoAlimtalk)([testPhone], templateVariables);
+                logs.push(`알림톡 전송 성공: ${user.userPhone}`);
                 sentNumbers.add(user.userPhone);
             }
             catch (error) {
                 logs.push(`알림톡 전송 실패: ${user.userPhone}, Error: ${error}`);
             }
-            if (message) {
-                // logs.push(`Sending SMS to ${user.userPhone}: "${message}"`);
-                // await sendSMS(testPhone!, message);
-                sentNumbers.add(user.userPhone);
-            }
+            // 문자 전송
+            // if (message) {
+            //   // logs.push(`Sending SMS to ${user.userPhone}: "${message}"`);
+            //   // await sendSMS(testPhone!, message);
+            //   sentNumbers.add(user.userPhone);
+            // }
         }
         logs.push(`총 일반 카드 발송: ${generalCardCount}명`);
         logs.push(`총 호감 카드 발송: ${favoriteCardCount}명`);

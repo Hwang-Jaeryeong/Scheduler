@@ -56,7 +56,6 @@ export async function sendKakaoAlimtalk(
   };
 
   try {
-    console.log('API 요청 데이터:', JSON.stringify(data, null, 2)); // 요청 데이터 출력
     const response = await axios.post(apiUrl, new URLSearchParams(data), { headers });
     console.log('알림톡 전송 성공:', JSON.stringify(response.data, null, 2));
   } catch (error: any) {
