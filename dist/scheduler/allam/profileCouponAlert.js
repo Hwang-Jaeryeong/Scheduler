@@ -35,39 +35,28 @@ function calculateLastTime() {
     }
     return lastTime;
 }
-// function calculateTwoTimesAgo(lastTime: Date): Date {
-//   const twoTimesAgo = new Date(lastTime);
-//   if (lastTime.getHours() === 13) {
-//     twoTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 이동
-//     twoTimesAgo.setHours(23); // 전날 23:00
-//   } else {
-//     twoTimesAgo.setHours(13); // 오늘 13:00
-//   }
-//   twoTimesAgo.setMinutes(0, 0, 0); // 분과 초를 초기화
-//   return twoTimesAgo;
-// }
-function calculateThreeTimesAgo(lastTime) {
-    const threeTimesAgo = new Date(lastTime);
+function calculateTwoTimesAgo(lastTime) {
+    const twoTimesAgo = new Date(lastTime);
     if (lastTime.getHours() === 13) {
-        threeTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 이동
-        threeTimesAgo.setHours(13, 0, 0, 0); // 전날 13:00
+        twoTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 이동
+        twoTimesAgo.setHours(23); // 전날 23:00
     }
-    else if (lastTime.getHours() === 23) {
-        threeTimesAgo.setDate(lastTime.getDate() - 1); // 전날로 이동
-        threeTimesAgo.setHours(23, 0, 0, 0); // 전날 23:00
+    else {
+        twoTimesAgo.setHours(13); // 오늘 13:00
     }
-    return threeTimesAgo;
+    twoTimesAgo.setMinutes(0, 0, 0); // 분과 초를 초기화
+    return twoTimesAgo;
 }
 // 선결제 여부 확인 : 수정 필요
 function checkPrepaid(userId, lastTime) {
     return __awaiter(this, void 0, void 0, function* () {
-        const threeTimesAgo = calculateThreeTimesAgo(lastTime);
+        const twoTimesAgo = calculateTwoTimesAgo(lastTime);
         // 1분 전과 1분 후의 범위를 설정
-        const startTime = new Date(threeTimesAgo);
-        startTime.setMinutes(threeTimesAgo.getMinutes() - 1);
-        const endTime = new Date(threeTimesAgo);
-        endTime.setMinutes(threeTimesAgo.getMinutes() + 1);
-        // 세 타임 전 row를 가져옴 (1분 전 ~ 1분 후 범위)
+        const startTime = new Date(twoTimesAgo);
+        startTime.setMinutes(twoTimesAgo.getMinutes() - 1);
+        const endTime = new Date(twoTimesAgo);
+        endTime.setMinutes(twoTimesAgo.getMinutes() + 1);
+        // 두 타임 전 row를 가져옴 (1분 전 ~ 1분 후 범위)
         const snapshots = yield Promise.all([
             firebase_1.default.collection("meetingMatch")
                 .where("meetingMatchUserIdMale", "==", userId)
@@ -143,7 +132,7 @@ function executeProfileCouponAlert() {
             // 메시지 생성
             const message = generateProfileCouponMessage(isPrepaid, has400Picks && isActive);
             if (message) {
-                // console.log(`Sending message to ${user.userPhone}: "${message}"`);
+                console.log(`Sending message to ${user.userPhone}: "${message}"`);
                 // 실제 메시지 전송 코드
                 // await sendSMS(testPhone!, message);
                 sentNumbers.add(user.userPhone);
@@ -155,7 +144,7 @@ function executeProfileCouponAlert() {
         console.log(`선결제 유저 수: ${prepaidUsersCount}`);
         console.log(`400픽 보유 유저 수: ${picksUsersCount}`);
         console.log(`활성화 유저 수: ${activeUsersCount}`);
-        // console.log(`메시지 발송 유저 수: ${messageSentCount}`);
+        console.log(`메시지 발송 유저 수: ${messageSentCount}`);
     });
 }
 executeProfileCouponAlert();

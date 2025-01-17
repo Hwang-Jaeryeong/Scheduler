@@ -50,14 +50,21 @@ function calculateTwoTimesAgo(lastTime) {
 function checkPostpaid(userId, lastTime) {
     return __awaiter(this, void 0, void 0, function* () {
         const twoTimesAgo = calculateTwoTimesAgo(lastTime);
+        // 1분 전과 1분 후의 범위
+        const startTime = new Date(twoTimesAgo);
+        startTime.setMinutes(twoTimesAgo.getMinutes() - 1);
+        const endTime = new Date(twoTimesAgo);
+        endTime.setMinutes(twoTimesAgo.getMinutes() + 1);
         const snapshots = yield Promise.all([
             firebase_1.default.collection("meetingMatch")
                 .where("meetingMatchUserIdMale", "==", userId)
-                .where("meetingMatchTime", "==", firestore_1.Timestamp.fromDate(twoTimesAgo))
+                .where("meetingMatchTime", ">=", firestore_1.Timestamp.fromDate(startTime))
+                .where("meetingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get(),
             firebase_1.default.collection("datingMatch")
                 .where("datingMatchUserIdMale", "==", userId)
-                .where("datingMatchTime", "==", firestore_1.Timestamp.fromDate(twoTimesAgo))
+                .where("datingMatchTime", ">=", firestore_1.Timestamp.fromDate(startTime))
+                .where("datingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get(),
         ]);
         let isGeneral = false;
@@ -67,10 +74,12 @@ function checkPostpaid(userId, lastTime) {
                 const data = doc.data();
                 if (data.meetingMatchPayMale === 1 || data.datingMatchPayMale === 1) {
                     if (data.meetingMatchCheckMale === 3 && data.meetingMatchCheckFemale === 3) {
-                        if (data.meetingMatchFirstView === 1)
+                        if (data.meetingMatchFirstView === 1 || data.datingMatchFirstView === 1) {
                             isGeneral = true;
-                        if (data.meetingMatchFirstView === 2)
+                        }
+                        if (data.meetingMatchFirstView === 2 || data.datingMatchFirstView === 2) {
                             isFemalePrepaid = true;
+                        }
                     }
                 }
             });
@@ -95,7 +104,7 @@ function executePostpaidAlert() {
         const now = firestore_1.Timestamp.now().toDate();
         const lastTime = calculateLastTime(now);
         const users = yield firebase_1.default.collection("user")
-            .where("userGender", "==", 1) // 남자 유저만 필터링
+            .where("userGender", "==", 1)
             .get()
             .then((snapshot) => snapshot.docs.map((doc) => ({
             id: doc.id,
@@ -108,23 +117,23 @@ function executePostpaidAlert() {
         let generalPostpaidCount = 0;
         let femalePrepaidCount = 0;
         for (const user of users) {
-            totalMaleUsers++; // 전체 남자 유저 카운트
+            totalMaleUsers++;
             if (sentNumbers.has(user.userPhone))
                 continue;
             const { isGeneral, isFemalePrepaid } = yield checkPostpaid(user.id, lastTime);
             if (isGeneral)
-                generalPostpaidCount++; // 일반 후결제 카운트 증가
+                generalPostpaidCount++;
             if (isFemalePrepaid)
-                femalePrepaidCount++; // 여성 선매칭 후결제 카운트 증가
+                femalePrepaidCount++;
             const message = generatePostpaidMessage(isFemalePrepaid, isGeneral);
             if (message) {
                 // console.log(`Sending message to ${user.userPhone}: "${message}"`);
+                // 실제 메시지 전송 코드
                 // await sendSMS(testPhone!, message);
                 // await sendSMS(user.userPhone, message);
                 sentNumbers.add(user.userPhone);
             }
         }
-        // 통계 정보 출력
         console.log("===== 실행 통계 =====");
         console.log(`전체 남자 유저 수: ${totalMaleUsers}`);
         console.log(`일반 후결제 유저 수: ${generalPostpaidCount}`);

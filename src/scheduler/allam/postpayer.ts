@@ -46,14 +46,22 @@ async function checkPostpaid(
 ): Promise<{ isGeneral: boolean; isFemalePrepaid: boolean }> {
   const twoTimesAgo = calculateTwoTimesAgo(lastTime);
 
+  // 1분 전과 1분 후의 범위
+  const startTime = new Date(twoTimesAgo);
+  startTime.setMinutes(twoTimesAgo.getMinutes() - 1);
+  const endTime = new Date(twoTimesAgo);
+  endTime.setMinutes(twoTimesAgo.getMinutes() + 1);
+
   const snapshots = await Promise.all([
     db.collection("meetingMatch")
       .where("meetingMatchUserIdMale", "==", userId)
-      .where("meetingMatchTime", "==", Timestamp.fromDate(twoTimesAgo))
+      .where("meetingMatchTime", ">=", Timestamp.fromDate(startTime))
+      .where("meetingMatchTime", "<=", Timestamp.fromDate(endTime))
       .get(),
     db.collection("datingMatch")
       .where("datingMatchUserIdMale", "==", userId)
-      .where("datingMatchTime", "==", Timestamp.fromDate(twoTimesAgo))
+      .where("datingMatchTime", ">=", Timestamp.fromDate(startTime))
+      .where("datingMatchTime", "<=", Timestamp.fromDate(endTime))
       .get(),
   ]);
 
@@ -65,8 +73,12 @@ async function checkPostpaid(
       const data = doc.data();
       if (data.meetingMatchPayMale === 1 || data.datingMatchPayMale === 1) {
         if (data.meetingMatchCheckMale === 3 && data.meetingMatchCheckFemale === 3) {
-          if (data.meetingMatchFirstView === 1) isGeneral = true;
-          if (data.meetingMatchFirstView === 2) isFemalePrepaid = true;
+          if (data.meetingMatchFirstView === 1 || data.datingMatchFirstView === 1) {
+            isGeneral = true;
+          }
+          if (data.meetingMatchFirstView === 2 || data.datingMatchFirstView === 2) {
+            isFemalePrepaid = true;
+          }
         }
       }
     });
@@ -77,13 +89,13 @@ async function checkPostpaid(
 
 // 메시지 생성 함수
 function generatePostpaidMessage(isFemalePrepaid: boolean, isGeneral: boolean): string | null {
-  if (isFemalePrepaid) {
-    return "(광고) 상대가 먼저 호감을 보냈어요! 오늘 밤 10시까지 연락처를 확인하세요! bit.ly/YP-DAY1";
-  }
-  if (isGeneral) {
-    return "(광고) 매칭 성사 완료! 오늘 밤 10시까지 연락처를 확인하세요! bit.ly/YP-DAY1";
-  }
-  return null;
+    if (isFemalePrepaid) {
+      return "(광고) 상대가 먼저 호감을 보냈어요! 오늘 밤 10시까지 연락처를 확인하세요! bit.ly/YP-DAY1";
+    }
+    if (isGeneral) {
+      return "(광고) 매칭 성사 완료! 오늘 밤 10시까지 연락처를 확인하세요! bit.ly/YP-DAY1";
+    }
+    return null;
 }
 
 // 실행 함수
@@ -93,7 +105,7 @@ async function executePostpaidAlert(): Promise<void> {
   const lastTime = calculateLastTime(now);
 
   const users = await db.collection("user")
-    .where("userGender", "==", 1) // 남자 유저만 필터링
+    .where("userGender", "==", 1)
     .get()
     .then((snapshot) =>
       snapshot.docs.map((doc) => ({
@@ -110,26 +122,26 @@ async function executePostpaidAlert(): Promise<void> {
   let femalePrepaidCount = 0;
 
   for (const user of users) {
-    totalMaleUsers++; // 전체 남자 유저 카운트
+    totalMaleUsers++;
 
     if (sentNumbers.has(user.userPhone)) continue;
 
     const { isGeneral, isFemalePrepaid } = await checkPostpaid(user.id, lastTime);
 
-    if (isGeneral) generalPostpaidCount++; // 일반 후결제 카운트 증가
-    if (isFemalePrepaid) femalePrepaidCount++; // 여성 선매칭 후결제 카운트 증가
+    if (isGeneral) generalPostpaidCount++;
+    if (isFemalePrepaid) femalePrepaidCount++;
 
     const message = generatePostpaidMessage(isFemalePrepaid, isGeneral);
 
     if (message) {
       // console.log(`Sending message to ${user.userPhone}: "${message}"`);
+      // 실제 메시지 전송 코드
       // await sendSMS(testPhone!, message);
       // await sendSMS(user.userPhone, message);
       sentNumbers.add(user.userPhone);
     }
   }
 
-  // 통계 정보 출력
   console.log("===== 실행 통계 =====");
   console.log(`전체 남자 유저 수: ${totalMaleUsers}`);
   console.log(`일반 후결제 유저 수: ${generalPostpaidCount}`);
@@ -137,7 +149,6 @@ async function executePostpaidAlert(): Promise<void> {
 }
 
 executePostpaidAlert();
-
 
 // // 스케줄러 설정
 // cron.schedule("0 13 * * *", () => {
