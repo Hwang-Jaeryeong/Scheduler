@@ -20,6 +20,7 @@ jobs:
 
       - name: Add EC2 to known_hosts
         run: |
+          mkdir -p ~/.ssh # SSH 디렉토리 생성
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Log in to EC2 and create .env
