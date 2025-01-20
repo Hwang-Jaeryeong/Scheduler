@@ -13,18 +13,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Log in to Amazon EC2
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.8
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-
-      - name: Pull repository on EC2
-        run: |
-          ssh -i <path_to_pem_file> ubuntu@${{ secrets.EC2_HOST }} << EOF
-          cd /home/ubuntu/app
-          git pull origin main
-          docker-compose down
-          docker-compose up -d
-          EOF
+          script: |
+            cd /home/ubuntu/app
+            git pull origin main
+            docker-compose down
+            docker-compose up -d
