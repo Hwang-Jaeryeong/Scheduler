@@ -27,17 +27,15 @@ jobs:
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           sudo apt update
-          sudo apt install -y docker.io
           sudo apt install -y docker-compose
           sudo usermod -aG docker ubuntu
-          sudo systemctl restart docker
-          if [ ! -d "/home/ubuntu/Scheduler" ]; then
-            git clone https://github.com/Hwang-Jaeryeong/Scheduler.git /home/ubuntu/Scheduler
-          fi
+          newgrp docker
+          cd /home/ubuntu/Scheduler || git clone https://github.com/Hwang-Jaeryeong/Scheduler.git /home/ubuntu/Scheduler
           cd /home/ubuntu/Scheduler
           npm install
           npm run build
           EOF
+
 
       - name: Log in to EC2 and create .env
         run: |
