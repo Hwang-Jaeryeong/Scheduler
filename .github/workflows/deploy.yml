@@ -27,10 +27,14 @@ jobs:
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           sudo apt update
+          sudo apt install -y docker.io
           sudo apt install -y docker-compose
           sudo usermod -aG docker ubuntu
-          newgrp docker
-          cd /home/ubuntu/Scheduler || git clone https://github.com/Hwang-Jaeryeong/Scheduler.git /home/ubuntu/Scheduler
+          sudo systemctl restart docker
+          if [ ! -d "/home/ubuntu/Scheduler" ]; then
+            git clone https://github.com/Hwang-Jaeryeong/Scheduler.git /home/ubuntu/Scheduler
+          fi
+          cd /home/ubuntu/Scheduler
           npm install
           npm run build
           EOF
@@ -46,6 +50,6 @@ jobs:
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
-          docker-compose down
-          docker-compose up --build -d
+          sudo docker-compose down
+          sudo docker-compose up --build -d
           EOF
