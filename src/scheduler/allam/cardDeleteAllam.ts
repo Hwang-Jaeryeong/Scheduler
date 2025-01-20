@@ -2,11 +2,11 @@ import dotenv from "dotenv";
 import db from "../../firebase/firebase";
 // import cron from "node-cron";
 import { checkUserCards } from "./cardMessage";
-import { sendKakaoAlimtalk } from "../kakaoAlimtalk";
+// import { sendKakaoAlimtalk } from "../kakaoAlimtalk";
 // import { sendSMS } from "../sms"
 
 dotenv.config();
-const testPhone = process.env.TEST_PHONE;
+// const testPhone = process.env.TEST_PHONE;
 
 // 수락/거절 여부 확인
 function hasAcceptedOrDeclined(matchRows: any[], gender: string): boolean {
@@ -108,9 +108,9 @@ export async function executeCardDeleteAllam(handleDate: Date): Promise<string[]
     // 카드 수신 여부 확인
     const hasReceivedCard = matchRows.length > 0;
   
-    if (isFavorite) {
+    if (isFavorite && !acceptedOrDeclined) {
       favoriteCardCount++;
-    } else {
+    } else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined){
       generalCardCount++;
     }
   
@@ -121,32 +121,32 @@ export async function executeCardDeleteAllam(handleDate: Date): Promise<string[]
     //   hasReceivedCard
     // );
   
-    // type 값 설정 로직
-    let type: string;
+    // // type 값 설정 로직
+    // let type: string;
   
-    if (isFavorite && !acceptedOrDeclined) {
-      type = "호감";
-    } else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined) {
-      type = "일반";
-    } else {
-      type = "기타"; // 기본값 설정 (조건이 없을 경우)
-    }
+    // if (isFavorite && !acceptedOrDeclined) {
+    //   type = "호감";
+    // } else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined) {
+    //   type = "일반";
+    // } else {
+    //   type = "기타"; // 기본값 설정 (조건이 없을 경우)
+    // }
   
-    // templateVariables 생성
-    const templateVariables = {
-      user_name: user.userName, // 사용자 이름
-      type: type, // 조건에 따른 타입 설정
-      deadline: "2025-01-31", // 마감 기한
-    };
+    // // templateVariables 생성
+    // const templateVariables = {
+    //   user_name: user.userName, // 사용자 이름
+    //   type: type, // 조건에 따른 타입 설정
+    //   deadline: "2025-01-31", // 마감 기한
+    // };
   
-    // 카카오 알림톡
-    try {
-      await sendKakaoAlimtalk([testPhone!], templateVariables);
-      logs.push(`알림톡 전송 성공: ${user.userPhone}`);
-      sentNumbers.add(user.userPhone);
-    } catch (error) {
-      logs.push(`알림톡 전송 실패: ${user.userPhone}, Error: ${error}`);
-    }
+    // // 카카오 알림톡
+    // try {
+    //   await sendKakaoAlimtalk([testPhone!], templateVariables);
+    //   logs.push(`알림톡 전송 성공: ${user.userPhone}`);
+    //   sentNumbers.add(user.userPhone);
+    // } catch (error) {
+    //   logs.push(`알림톡 전송 실패: ${user.userPhone}, Error: ${error}`);
+    // }
   
     // 문자 전송
     // if (message) {

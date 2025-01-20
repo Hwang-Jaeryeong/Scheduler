@@ -29,7 +29,7 @@ function calculateLastTime(now: Date): Date {
 function calculateTwoTimesAgo(lastTime: Date): Date {
   const twoTimesAgo = new Date(lastTime);
 
-  if (lastTime.getHours() === 13) {
+  if (lastTime.getHours() == 13) {
     twoTimesAgo.setDate(lastTime.getDate() - 1);
     twoTimesAgo.setHours(23, 0, 0, 0);
   } else {
@@ -52,40 +52,53 @@ async function checkPostpaid(
   const endTime = new Date(twoTimesAgo);
   endTime.setMinutes(twoTimesAgo.getMinutes() + 1);
 
-  const snapshots = await Promise.all([
+  const [meetingSnapshots, datingSnapshots] = await Promise.all([
     db.collection("meetingMatch")
       .where("meetingMatchUserIdMale", "==", userId)
       .where("meetingMatchTime", ">=", Timestamp.fromDate(startTime))
       .where("meetingMatchTime", "<=", Timestamp.fromDate(endTime))
+      .select("meetingMatchFirstView", "meetingMatchCheckMale", "meetingMatchCheckFemale", "meetingMatchPayMale")
       .get(),
     db.collection("datingMatch")
       .where("datingMatchUserIdMale", "==", userId)
       .where("datingMatchTime", ">=", Timestamp.fromDate(startTime))
       .where("datingMatchTime", "<=", Timestamp.fromDate(endTime))
-      .get(),
+      .select("datingMatchFirstView", "datingMatchCheckMale", "datingMatchCheckFemale", "datingMatchPayMale")
+      .get()
   ]);
 
   let isGeneral = false;
   let isFemalePrepaid = false;
 
-  snapshots.forEach((snapshot) => {
-    snapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      if (data.meetingMatchPayMale === 1 || data.datingMatchPayMale === 1) {
-        if (data.meetingMatchCheckMale === 3 && data.meetingMatchCheckFemale === 3) {
-          if (data.meetingMatchFirstView === 1 || data.datingMatchFirstView === 1) {
-            isGeneral = true;
-          }
-          if (data.meetingMatchFirstView === 2 || data.datingMatchFirstView === 2) {
-            isFemalePrepaid = true;
-          }
-        }
-      }
-    });
+  // meetingMatch 처리
+  meetingSnapshots.docs.forEach((doc) => {
+    const data = doc.data();
+    if (
+      data.meetingMatchPayMale === 1 &&
+      data.meetingMatchCheckMale === 3 &&
+      data.meetingMatchCheckFemale === 3
+    ) {
+      if (data.meetingMatchFirstView === 1) isGeneral = true;
+      if (data.meetingMatchFirstView === 2) isFemalePrepaid = true;
+    }
+  });
+
+  // datingMatch 처리
+  datingSnapshots.docs.forEach((doc) => {
+    const data = doc.data();
+    if (
+      data.datingMatchPayMale === 1 &&
+      data.datingMatchCheckMale === 3 &&
+      data.datingMatchCheckFemale === 3
+    ) {
+      if (data.datingMatchFirstView === 1) isGeneral = true;
+      if (data.datingMatchFirstView === 2) isFemalePrepaid = true;
+    }
   });
 
   return { isGeneral, isFemalePrepaid };
 }
+
 
 // 메시지 생성 함수
 function generatePostpaidMessage(isFemalePrepaid: boolean, isGeneral: boolean): string | null {
@@ -136,6 +149,7 @@ export async function executePostpaidAlert(): Promise<string[]> {
 
     if (message) {
       // logs.push(`Sending message to ${user.userPhone}: "${message}"`);
+      // await sendSMS(testPhone!, message);
       sentNumbers.add(user.userPhone);
     }
   }
@@ -145,7 +159,7 @@ export async function executePostpaidAlert(): Promise<string[]> {
   logs.push(`일반 후결제 유저 수: ${generalPostpaidCount}`);
   logs.push(`여성 선매칭 후결제 유저 수: ${femalePrepaidCount}`);
 
-  return logs; // logs 반환
+  return logs;
 }
 
 

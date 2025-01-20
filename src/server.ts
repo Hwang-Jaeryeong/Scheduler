@@ -94,30 +94,28 @@ app.post("/postpayer", async (_, res) => {
 
   
 // POST /profile-coupon-alert
-app.post("/profile-coupon-alert", async (_, res) => {
-  logs.length = 0; // 이전 요청 로그 초기화
+app.post("/profile-coupon-alert", async (req, res) => {
+  const logs: string[] = [];
 
   try {
-      logToConsole("POST /profile-coupon-alert 요청 수신");
+    logToConsole("POST /profile-coupon-alert 요청 수신");
 
-      // profileCouponAlert.ts의 함수 실행 및 반환된 로그 처리
-      const couponAlertLogs = await executeProfileCouponAlert();
-      logs.push(...couponAlertLogs);
+    const handleDate = req.body.handleDate ? new Date(req.body.handleDate) : undefined;
+    const couponAlertLogs = await executeProfileCouponAlert(handleDate);
+    logs.push(...couponAlertLogs);
 
-      // 성공 메시지와 로그 응답
-      res.status(200).send({
-          success: true,
-          message: "executeProfileCouponAlert 실행 완료",
-          logs: logs, // 로그 반환
-      });
+    res.status(200).send({
+      success: true,
+      message: "executeProfileCouponAlert 실행 완료",
+      logs: logs,
+    });
   } catch (error: unknown) {
-      const err = error as Error; // error를 Error 타입으로 단언
-      console.error(`executeProfileCouponAlert 실행 중 에러: ${err.message}`);
-      res.status(500).send({
-          success: false,
-          message: "executeProfileCouponAlert 실행 중 에러 발생",
-          error: err.message,
-      });
+    const err = error as Error;
+    res.status(500).send({
+      success: false,
+      message: "executeProfileCouponAlert 실행 중 에러 발생",
+      error: err.message,
+    });
   }
 });
 
