@@ -20,7 +20,17 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu/app
+            # Scheduler 디렉토리가 없으면 Git 리포지토리 클론
+            if [ ! -d "/home/ubuntu/Scheduler" ]; then
+              git clone https://github.com/<your-username>/Scheduler.git /home/ubuntu/Scheduler
+            fi
+
+            # Scheduler 디렉토리로 이동
+            cd /home/ubuntu/Scheduler
+
+            # 최신 코드 Pull
             git pull origin main
-            docker-compose down
+
+            # Docker Compose 실행
+            docker-compose down || true
             docker-compose up -d
