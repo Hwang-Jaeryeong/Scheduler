@@ -34,14 +34,18 @@ jobs:
             git clone https://github.com/Hwang-Jaeryeong/Scheduler.git /home/ubuntu/Scheduler
           fi
           cd /home/ubuntu/Scheduler
+          git pull origin main
           npm install
           EOF
-          
-      - name: Log in to EC2 and create .env
+
+      - name: Create .env file
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
-          echo "${{ secrets.ENV_VARS }}" > .env
+          echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" > .env
+          echo "FIREBASE_PRIVATE_KEY=\"${{ secrets.FIREBASE_PRIVATE_KEY }}\"" >> .env
+          echo "FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }}" >> .env
+          echo "${{ secrets.ENV_VARS }}" >> .env
           EOF
 
       - name: Deploy using Docker Compose
