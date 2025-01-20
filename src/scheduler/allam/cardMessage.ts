@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import db from "../../firebase/firebase";
 import { Timestamp } from "firebase-admin/firestore";
-import cron from "node-cron";
+// import cron from "node-cron";
 import { sendSMS } from "../sms"
 
 dotenv.config();
@@ -112,12 +112,9 @@ export async function extractAndSendMessages(log: (message: string) => void): Pr
   await sendSMS(testPhone!, message);
 }
 
-
-// 스케줄러 설정
-// 지금(이건 테스트를 위해 집어넣음)
-cron.schedule("58 1 * * *", () => {
-    const log = (message: string) => console.log(message); // 로그 함수 정의
+if (require.main === module) {
+  const log = (message: string) => console.log(message); // 로그 함수 정의
     extractAndSendMessages(log);
-});
+}
 // cron.schedule("15 13 * * *", extractAndSendMessages); // 오후 1시 15분
 // cron.schedule("15 23 * * *", extractAndSendMessages); // 오후 11시 15분
