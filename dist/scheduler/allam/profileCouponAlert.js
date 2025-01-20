@@ -12,6 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.executeProfileCouponAlert = executeProfileCouponAlert;
 const dotenv_1 = __importDefault(require("dotenv"));
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
 // import cron from "node-cron";
@@ -87,7 +88,8 @@ function generateProfileCouponMessage(isPrepaid, has400Picks) {
 // 실행 함수
 function executeProfileCouponAlert() {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log("start");
+        const logs = [];
+        logs.push("profileCouponAlert start");
         const lastTime = calculateLastTime();
         const users = yield firebase_1.default.collection("user")
             .where("userGender", "==", 1)
@@ -132,22 +134,25 @@ function executeProfileCouponAlert() {
             // 메시지 생성
             const message = generateProfileCouponMessage(isPrepaid, has400Picks && isActive);
             if (message) {
-                console.log(`Sending message to ${user.userPhone}: "${message}"`);
+                // logs.push(`Sending message to ${user.userPhone}: "${message}"`);
                 // 실제 메시지 전송 코드
                 // await sendSMS(testPhone!, message);
                 sentNumbers.add(user.userPhone);
                 messageSentCount++;
             }
         }
-        console.log("===== 실행 통계 =====");
-        console.log(`총 유저 수: ${totalUsers}`);
-        console.log(`선결제 유저 수: ${prepaidUsersCount}`);
-        console.log(`400픽 보유 유저 수: ${picksUsersCount}`);
-        console.log(`활성화 유저 수: ${activeUsersCount}`);
-        console.log(`메시지 발송 유저 수: ${messageSentCount}`);
+        logs.push("===== 실행 통계 =====");
+        logs.push(`총 유저 수: ${totalUsers}`);
+        logs.push(`선결제 유저 수: ${prepaidUsersCount}`);
+        logs.push(`400픽 보유 유저 수: ${picksUsersCount}`);
+        logs.push(`활성화 유저 수: ${activeUsersCount}`);
+        logs.push(`메시지 발송 유저 수: ${messageSentCount}`);
+        return logs;
     });
 }
-executeProfileCouponAlert();
+if (require.main === module) {
+    executeProfileCouponAlert();
+}
 // // 스케줄러 설정
 // cron.schedule("0 13 * * *", () => {
 //   console.log("Executing Profile Coupon Alert Scheduler at 13:00...");

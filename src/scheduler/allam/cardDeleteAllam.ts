@@ -70,7 +70,7 @@ async function checkFavoriteCards(
 
 // 실행 함수
 export async function executeCardDeleteAllam(handleDate: Date): Promise<string[]> {
-  console.log("start");
+  console.log("card Delete Allam start");
   const logs: string[] = []; // 로그 저장 배열
 
   const users = await db.collection("user").get().then((snapshot) =>
@@ -162,7 +162,10 @@ export async function executeCardDeleteAllam(handleDate: Date): Promise<string[]
   return logs; // 로그 반환
 }
 
-executeCardDeleteAllam(new Date());
+if (require.main === module) {
+  executeCardDeleteAllam(new Date());
+}
+
 
 // // 스케줄러 설정
 // cron.schedule("19 17 * * *", () => {

@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cardMessage_1 = require("./scheduler/allam/cardMessage");
 const cardDeleteAllam_1 = require("./scheduler/allam/cardDeleteAllam");
+const postpayer_1 = require("./scheduler/allam/postpayer");
+const profileCouponAlert_1 = require("./scheduler/allam/profileCouponAlert");
 const app = (0, express_1.default)();
 const port = 3000;
 // JSON 요청 처리 미들웨어
@@ -63,6 +65,56 @@ app.post("/card-delete-allam", (req, res) => __awaiter(void 0, void 0, void 0, f
             success: false,
             message: "executeCardDeleteAllam 실행 중 에러 발생",
             error: error.message,
+        });
+    }
+}));
+// POST /postpayer
+app.post("/postpayer", (_, res) => __awaiter(void 0, void 0, void 0, function* () {
+    logs.length = 0; // 이전 요청 로그 초기화
+    try {
+        logToConsole("POST /postpayer 요청 수신");
+        // postpayer.ts의 함수 실행 및 로그 추가
+        const postpaidLogs = yield (0, postpayer_1.executePostpaidAlert)();
+        logs.push(...postpaidLogs);
+        // 성공 메시지와 로그 응답
+        res.status(200).send({
+            success: true,
+            message: "executePostpaidAlert 실행 완료",
+            logs: logs, // 로그 반환
+        });
+    }
+    catch (error) {
+        const err = error; // error를 Error 타입으로 단언
+        console.error(`executePostpaidAlert 실행 중 에러: ${err.message}`);
+        res.status(500).send({
+            success: false,
+            message: "executePostpaidAlert 실행 중 에러 발생",
+            error: err.message,
+        });
+    }
+}));
+// POST /profile-coupon-alert
+app.post("/profile-coupon-alert", (_, res) => __awaiter(void 0, void 0, void 0, function* () {
+    logs.length = 0; // 이전 요청 로그 초기화
+    try {
+        logToConsole("POST /profile-coupon-alert 요청 수신");
+        // profileCouponAlert.ts의 함수 실행 및 반환된 로그 처리
+        const couponAlertLogs = yield (0, profileCouponAlert_1.executeProfileCouponAlert)();
+        logs.push(...couponAlertLogs);
+        // 성공 메시지와 로그 응답
+        res.status(200).send({
+            success: true,
+            message: "executeProfileCouponAlert 실행 완료",
+            logs: logs, // 로그 반환
+        });
+    }
+    catch (error) {
+        const err = error; // error를 Error 타입으로 단언
+        console.error(`executeProfileCouponAlert 실행 중 에러: ${err.message}`);
+        res.status(500).send({
+            success: false,
+            message: "executeProfileCouponAlert 실행 중 에러 발생",
+            error: err.message,
         });
     }
 }));

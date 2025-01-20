@@ -99,8 +99,9 @@ function generatePostpaidMessage(isFemalePrepaid: boolean, isGeneral: boolean): 
 }
 
 // 실행 함수
-async function executePostpaidAlert(): Promise<void> {
-  console.log("start");
+export async function executePostpaidAlert(): Promise<string[]> {
+  const logs: string[] = [];
+  logs.push("postpayer start");
   const now = Timestamp.now().toDate();
   const lastTime = calculateLastTime(now);
 
@@ -134,21 +135,23 @@ async function executePostpaidAlert(): Promise<void> {
     const message = generatePostpaidMessage(isFemalePrepaid, isGeneral);
 
     if (message) {
-      // console.log(`Sending message to ${user.userPhone}: "${message}"`);
-      // 실제 메시지 전송 코드
-      // await sendSMS(testPhone!, message);
-      // await sendSMS(user.userPhone, message);
+      // logs.push(`Sending message to ${user.userPhone}: "${message}"`);
       sentNumbers.add(user.userPhone);
     }
   }
 
-  console.log("===== 실행 통계 =====");
-  console.log(`전체 남자 유저 수: ${totalMaleUsers}`);
-  console.log(`일반 후결제 유저 수: ${generalPostpaidCount}`);
-  console.log(`여성 선매칭 후결제 유저 수: ${femalePrepaidCount}`);
+  logs.push("===== 실행 통계 =====");
+  logs.push(`전체 남자 유저 수: ${totalMaleUsers}`);
+  logs.push(`일반 후결제 유저 수: ${generalPostpaidCount}`);
+  logs.push(`여성 선매칭 후결제 유저 수: ${femalePrepaidCount}`);
+
+  return logs; // logs 반환
 }
 
-executePostpaidAlert();
+
+if (require.main === module) {
+    executePostpaidAlert();
+}
 
 // // 스케줄러 설정
 // cron.schedule("0 13 * * *", () => {

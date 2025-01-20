@@ -1,0 +1,30 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Amazon EC2
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Pull repository on EC2
+        run: |
+          ssh -i <path_to_pem_file> ubuntu@${{ secrets.EC2_HOST }} << EOF
+          cd /home/ubuntu/app
+          git pull origin main
+          docker-compose down
+          docker-compose up -d
+          EOF

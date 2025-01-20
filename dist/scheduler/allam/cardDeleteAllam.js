@@ -69,7 +69,7 @@ function checkFavoriteCards(matchRows, partnerGender, type) {
 // 실행 함수
 function executeCardDeleteAllam(handleDate) {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log("start");
+        console.log("card Delete Allam start");
         const logs = []; // 로그 저장 배열
         const users = yield firebase_1.default.collection("user").get().then((snapshot) => snapshot.docs.map((doc) => ({
             id: doc.id,
@@ -147,7 +147,9 @@ function executeCardDeleteAllam(handleDate) {
         return logs; // 로그 반환
     });
 }
-executeCardDeleteAllam(new Date());
+if (require.main === module) {
+    executeCardDeleteAllam(new Date());
+}
 // // 스케줄러 설정
 // cron.schedule("19 17 * * *", () => {
 //   console.log("Executing Card Delete Alarm Scheduler...");

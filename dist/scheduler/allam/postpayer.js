@@ -12,6 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.executePostpaidAlert = executePostpaidAlert;
 const dotenv_1 = __importDefault(require("dotenv"));
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
 // import cron from "node-cron";
@@ -100,7 +101,8 @@ function generatePostpaidMessage(isFemalePrepaid, isGeneral) {
 // 실행 함수
 function executePostpaidAlert() {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log("start");
+        const logs = [];
+        logs.push("postpayer start");
         const now = firestore_1.Timestamp.now().toDate();
         const lastTime = calculateLastTime(now);
         const users = yield firebase_1.default.collection("user")
@@ -127,20 +129,20 @@ function executePostpaidAlert() {
                 femalePrepaidCount++;
             const message = generatePostpaidMessage(isFemalePrepaid, isGeneral);
             if (message) {
-                // console.log(`Sending message to ${user.userPhone}: "${message}"`);
-                // 실제 메시지 전송 코드
-                // await sendSMS(testPhone!, message);
-                // await sendSMS(user.userPhone, message);
+                // logs.push(`Sending message to ${user.userPhone}: "${message}"`);
                 sentNumbers.add(user.userPhone);
             }
         }
-        console.log("===== 실행 통계 =====");
-        console.log(`전체 남자 유저 수: ${totalMaleUsers}`);
-        console.log(`일반 후결제 유저 수: ${generalPostpaidCount}`);
-        console.log(`여성 선매칭 후결제 유저 수: ${femalePrepaidCount}`);
+        logs.push("===== 실행 통계 =====");
+        logs.push(`전체 남자 유저 수: ${totalMaleUsers}`);
+        logs.push(`일반 후결제 유저 수: ${generalPostpaidCount}`);
+        logs.push(`여성 선매칭 후결제 유저 수: ${femalePrepaidCount}`);
+        return logs; // logs 반환
     });
 }
-executePostpaidAlert();
+if (require.main === module) {
+    executePostpaidAlert();
+}
 // // 스케줄러 설정
 // cron.schedule("0 13 * * *", () => {
 //   console.log("Executing Postpaid Alert Scheduler at 13:00...");

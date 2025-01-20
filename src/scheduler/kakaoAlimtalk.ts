@@ -18,6 +18,7 @@ export async function sendKakaoAlimtalk(
   phoneNumbers: string[],
   templateVariables: Record<string, string>
 ): Promise<void> {
+  console.log("sendKakaoAlimtalk called with:", phoneNumbers, templateVariables);
   const buttonData = [
     {
       name: '카드 확인', // 승인된 템플릿의 버튼 이름
@@ -69,11 +70,11 @@ export async function sendKakaoAlimtalk(
   }
 }
 
-// 테스트 호출
-const templateVariables = {
-  user_name: '황재령',
-  type: '호감',
-  deadline: '2025-01-31',
-};
+// // 테스트 호출
+// const templateVariables = {
+//   user_name: '황재령',
+//   type: '호감',
+//   deadline: '2025-01-31',
+// };
 
-sendKakaoAlimtalk(['+821041060607'], templateVariables);
+// sendKakaoAlimtalk(['+821041060607'], templateVariables);

@@ -27,6 +27,7 @@ if (!apiKey || !userId || !senderKey || !templateCode || !senderPhone) {
 }
 function sendKakaoAlimtalk(phoneNumbers, templateVariables) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log("sendKakaoAlimtalk called with:", phoneNumbers, templateVariables);
         const buttonData = [
             {
                 name: '카드 확인', // 승인된 템플릿의 버튼 이름
@@ -61,7 +62,6 @@ function sendKakaoAlimtalk(phoneNumbers, templateVariables) {
             'Content-Type': 'application/x-www-form-urlencoded',
         };
         try {
-            console.log('API 요청 데이터:', JSON.stringify(data, null, 2)); // 요청 데이터 출력
             const response = yield axios_1.default.post(apiUrl, new URLSearchParams(data), { headers });
             console.log('알림톡 전송 성공:', JSON.stringify(response.data, null, 2));
         }
@@ -78,10 +78,10 @@ function sendKakaoAlimtalk(phoneNumbers, templateVariables) {
         }
     });
 }
-// 테스트 호출
-const templateVariables = {
-    user_name: '황재령',
-    type: '호감',
-    deadline: '2025-01-31',
-};
-sendKakaoAlimtalk(['+821041060607'], templateVariables);
+// // 테스트 호출
+// const templateVariables = {
+//   user_name: '황재령',
+//   type: '호감',
+//   deadline: '2025-01-31',
+// };
+// sendKakaoAlimtalk(['+821041060607'], templateVariables);
