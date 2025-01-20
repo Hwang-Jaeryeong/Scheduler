@@ -30,8 +30,9 @@ jobs:
           sudo apt install -y docker-compose
           sudo usermod -aG docker ubuntu
           newgrp docker
-          mkdir -p /home/ubuntu/Scheduler
           cd /home/ubuntu/Scheduler || git clone https://github.com/Hwang-Jaeryeong/Scheduler.git /home/ubuntu/Scheduler
+          npm install
+          npm run build
           EOF
 
       - name: Log in to EC2 and create .env
