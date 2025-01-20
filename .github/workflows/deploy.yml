@@ -13,16 +13,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Create SSH key for EC2
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > ec2-key.pem
+          chmod 600 ec2-key.pem
+
       - name: Log in to EC2 and create .env
         run: |
-          ssh -i <path_to_pem_file> ubuntu@${{ secrets.EC2_HOST }} << EOF
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
           echo "${{ secrets.ENV_VARS }}" > .env
           EOF
 
       - name: Deploy using Docker Compose
         run: |
-          ssh -i <path_to_pem_file> ubuntu@${{ secrets.EC2_HOST }} << EOF
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
           docker-compose down
           docker-compose up --build -d
