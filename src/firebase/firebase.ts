@@ -16,4 +16,4 @@ admin.initializeApp({
 // Firestore 인스턴스 가져오기
 const db = admin.firestore();
 
-export default db; // TypeScript에서 모듈 내보내기
+export default db;

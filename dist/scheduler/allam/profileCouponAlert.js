@@ -86,6 +86,7 @@ function generateProfileCouponMessage(isPrepaid, has400Picks) {
 function executeProfileCouponAlert(handleDate) {
     return __awaiter(this, void 0, void 0, function* () {
         const logs = [];
+        console.log("profileCouponAlert start");
         logs.push("profileCouponAlert start");
         // 현재 시간 설정: 요청 바디에서 제공된 시간 또는 Firebase Admin의 시간 사용
         const now = handleDate ? new Date(handleDate) : firestore_1.Timestamp.now().toDate();

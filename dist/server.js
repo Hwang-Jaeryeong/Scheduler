@@ -97,7 +97,7 @@ app.post("/postpayer", (_, res) => __awaiter(void 0, void 0, void 0, function* (
 app.post("/profile-coupon-alert", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const logs = [];
     try {
-        logs.push("POST /profile-coupon-alert 요청 수신");
+        logToConsole("POST /profile-coupon-alert 요청 수신");
         const handleDate = req.body.handleDate ? new Date(req.body.handleDate) : undefined;
         const couponAlertLogs = yield (0, profileCouponAlert_1.executeProfileCouponAlert)(handleDate);
         logs.push(...couponAlertLogs);

@@ -39,7 +39,7 @@ var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 const admin = __importStar(require("firebase-admin"));
 const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config(); // .env 파일 로드
+dotenv_1.default.config();
 // Firebase 초기화
 admin.initializeApp({
     credential: admin.credential.cert({
@@ -51,4 +51,4 @@ admin.initializeApp({
 });
 // Firestore 인스턴스 가져오기
 const db = admin.firestore();
-exports.default = db; // TypeScript에서 모듈 내보내기
+exports.default = db;

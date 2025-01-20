@@ -18,9 +18,10 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > ec2-key.pem
           chmod 600 ec2-key.pem
 
+
       - name: Add EC2 to known_hosts
         run: |
-          mkdir -p ~/.ssh # SSH 디렉토리 생성
+          mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Log in to EC2 and create .env
