@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import dotenv from "dotenv";
 
-dotenv.config(); // .env 파일 로드
+dotenv.config();
 
 // Firebase 초기화
 admin.initializeApp({

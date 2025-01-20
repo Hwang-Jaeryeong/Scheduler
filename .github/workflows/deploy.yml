@@ -13,24 +13,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Scheduler 디렉토리가 없으면 Git 리포지토리 클론
-            if [ ! -d "/home/ubuntu/Scheduler" ]; then
-              git clone https://github.com/<your-username>/Scheduler.git /home/ubuntu/Scheduler
-            fi
+      - name: Log in to EC2 and create .env
+        run: |
+          ssh -i <path_to_pem_file> ubuntu@${{ secrets.EC2_HOST }} << EOF
+          cd /home/ubuntu/Scheduler
+          echo "${{ secrets.ENV_VARS }}" > .env
+          EOF
 
-            # Scheduler 디렉토리로 이동
-            cd /home/ubuntu/Scheduler
-
-            # 최신 코드 Pull
-            git pull origin main
-
-            # Docker Compose 실행
-            docker-compose down || true
-            docker-compose up -d
+      - name: Deploy using Docker Compose
+        run: |
+          ssh -i <path_to_pem_file> ubuntu@${{ secrets.EC2_HOST }} << EOF
+          cd /home/ubuntu/Scheduler
+          docker-compose down
+          docker-compose up --build -d
+          EOF
