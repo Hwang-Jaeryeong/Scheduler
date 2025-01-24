@@ -10,39 +10,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 코드 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. SSH 키 생성
       - name: Create SSH key for EC2
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > ec2-key.pem
           chmod 600 ec2-key.pem
-        shell: bash
 
-      # 3. EC2 서버를 known_hosts에 추가
       - name: Add EC2 to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts || { echo "Failed to add host to known_hosts"; exit 0; }
-          echo "Host key added successfully"
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts || echo "Host key scan failed"
         shell: bash
 
-      # 4. known_hosts 내용 확인
       - name: Verify known_hosts
         run: |
           echo "Verifying known_hosts content..."
           cat ~/.ssh/known_hosts
         shell: bash
 
-      # 5. SSH 연결 테스트
       - name: Test SSH connection
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} echo "SSH connection successful!"
         shell: bash
 
-      # 6. EC2 환경 설정
       - name: Prepare EC2 environment
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
@@ -58,24 +50,19 @@ jobs:
           EOF
         shell: bash
 
-      # 7. .env 파일 생성
       - name: Create .env file
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
-          echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" > .env
-          echo "FIREBASE_PRIVATE_KEY=\"${{ secrets.FIREBASE_PRIVATE_KEY }}\"" >> .env
-          echo "FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }}" >> .env
-          echo "${{ secrets.ENV_VARS }}" >> .env
+          echo "${{ secrets.ENV_VARS }}" > .env
           EOF
         shell: bash
 
-      # 8. Docker Compose를 이용한 배포
       - name: Deploy using Docker Compose
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
-          sudo docker-compose down
-          sudo docker-compose up --build -d
+          sudo docker-compose -f docker-compose.yml down
+          sudo docker-compose -f docker-compose.yml up --build -d
           EOF
         shell: bash
