@@ -21,11 +21,17 @@ jobs:
       - name: Add EC2 to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts || echo "Host key scan failed, using StrictHostKeyChecking=no"
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+        shell: bash
+
+      - name: Verify known_hosts
+        run: |
+          echo "Verifying known_hosts content..."
+          cat ~/.ssh/known_hosts
 
       - name: Prepare EC2 environment
         run: |
-          ssh -t -o StrictHostKeyChecking=no -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           sudo apt update
           sudo apt install -y docker-compose
           sudo usermod -aG docker ubuntu
@@ -36,21 +42,24 @@ jobs:
           git pull origin main
           npm install
           EOF
+        shell: bash
 
       - name: Create .env file
         run: |
-          ssh -t -o StrictHostKeyChecking=no -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
           echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" > .env
           echo "FIREBASE_PRIVATE_KEY=\"${{ secrets.FIREBASE_PRIVATE_KEY }}\"" >> .env
           echo "FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }}" >> .env
           echo "${{ secrets.ENV_VARS }}" >> .env
           EOF
+        shell: bash
 
       - name: Deploy using Docker Compose
         run: |
-          ssh -t -o StrictHostKeyChecking=no -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
           sudo docker-compose -f docker-compose.yml down
           sudo docker-compose -f docker-compose.yml up --build -d
           EOF
+        shell: bash
