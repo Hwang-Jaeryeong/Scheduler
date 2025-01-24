@@ -21,7 +21,7 @@ jobs:
       - name: Add EC2 to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts || echo "Failed to add host"
 
       - name: Prepare EC2 environment
         run: |
@@ -29,7 +29,6 @@ jobs:
           sudo apt update
           sudo apt install -y docker-compose
           sudo usermod -aG docker ubuntu
-          newgrp docker
           if [ ! -d "/home/ubuntu/Scheduler" ]; then
             git clone https://github.com/Hwang-Jaeryeong/Scheduler.git /home/ubuntu/Scheduler
           fi
@@ -52,6 +51,6 @@ jobs:
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
-          sudo docker-compose down
-          sudo docker-compose up --build -d
+          sudo docker-compose -f docker-compose.yml down
+          sudo docker-compose -f docker-compose.yml up --build -d
           EOF
