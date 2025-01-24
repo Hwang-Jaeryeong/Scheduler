@@ -19,6 +19,7 @@ const firebase_1 = __importDefault(require("../../firebase/firebase"));
 const firestore_1 = require("firebase-admin/firestore");
 // import cron from "node-cron";
 const sms_1 = require("../sms");
+const profileCouponAlert_1 = require("./profileCouponAlert");
 dotenv_1.default.config();
 const testPhone = process.env.TEST_PHONE;
 // 일주일 간 가입한 사용자 추출
@@ -39,39 +40,43 @@ function checkUserCards(user, handleDate) {
     return __awaiter(this, void 0, void 0, function* () {
         const meetingCards = [];
         const datingCards = [];
-        let maleMatchTime, femaleMatchTime;
-        if (handleDate.getHours() >= 23) {
-            maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0));
-            femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000);
-        }
-        else if (handleDate.getHours() >= 13) {
-            maleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0));
-            femaleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000);
-        }
-        else {
-            maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000);
-            femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000);
-        }
+        // 기준 시간 계산
+        const lastTime = (0, profileCouponAlert_1.calculateLastTime)(handleDate); // 최근 기준 시간 (13시 또는 23시)
+        const twoTimesAgo = (0, profileCouponAlert_1.calculateTwoTimesAgo)(lastTime); // 두 타임 전 기준 시간
         if (user.userGender === 1) {
+            // 남성 유저: 기준 시간 = lastTime ± 1분
+            const startTime = new Date(lastTime);
+            startTime.setMinutes(startTime.getMinutes() - 1); // -1분
+            const endTime = new Date(lastTime);
+            endTime.setMinutes(endTime.getMinutes() + 1); // +1분
             const meetingSnapshot = yield firebase_1.default.collection("meetingMatch")
                 .where("meetingMatchUserIdMale", "==", user.id)
-                .where("meetingMatchTime", "==", firestore_1.Timestamp.fromDate(maleMatchTime))
+                .where("meetingMatchTime", ">=", firestore_1.Timestamp.fromDate(startTime))
+                .where("meetingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get();
             const datingSnapshot = yield firebase_1.default.collection("datingMatch")
                 .where("datingMatchUserIdMale", "==", user.id)
-                .where("datingMatchTime", "==", firestore_1.Timestamp.fromDate(maleMatchTime))
+                .where("datingMatchTime", ">=", firestore_1.Timestamp.fromDate(startTime))
+                .where("datingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get();
             meetingCards.push(...meetingSnapshot.docs.map((doc) => doc.data()));
             datingCards.push(...datingSnapshot.docs.map((doc) => doc.data()));
         }
         else {
+            // 여성 유저: 기준 시간 = twoTimesAgo ± 1분
+            const startTime = new Date(twoTimesAgo);
+            startTime.setMinutes(startTime.getMinutes() - 1); // -1분
+            const endTime = new Date(twoTimesAgo);
+            endTime.setMinutes(endTime.getMinutes() + 1); // +1분
             const meetingSnapshot = yield firebase_1.default.collection("meetingMatch")
                 .where("meetingMatchUserIdFemale", "==", user.id)
-                .where("meetingMatchTime", "==", firestore_1.Timestamp.fromDate(femaleMatchTime))
+                .where("meetingMatchTime", ">=", firestore_1.Timestamp.fromDate(startTime))
+                .where("meetingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get();
             const datingSnapshot = yield firebase_1.default.collection("datingMatch")
                 .where("datingMatchUserIdFemale", "==", user.id)
-                .where("datingMatchTime", "==", firestore_1.Timestamp.fromDate(femaleMatchTime))
+                .where("datingMatchTime", ">=", firestore_1.Timestamp.fromDate(startTime))
+                .where("datingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get();
             meetingCards.push(...meetingSnapshot.docs.map((doc) => doc.data()));
             datingCards.push(...datingSnapshot.docs.map((doc) => doc.data()));

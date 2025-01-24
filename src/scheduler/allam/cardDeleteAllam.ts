@@ -73,13 +73,20 @@ export async function executeCardDeleteAllam(handleDate: Date): Promise<string[]
   console.log("card Delete Allam start");
   const logs: string[] = []; // 로그 저장 배열
 
-  const users = await db.collection("user").get().then((snapshot) =>
-    snapshot.docs.map((doc) => ({
-      id: doc.id,
-      userName: doc.data().userName,
-      userPhone: doc.data().userPhone,
-      userGender: doc.data().userGender,
-    }))
+  const users = await db.collection("user")
+    .get()
+    .then((snapshot) =>
+      snapshot.docs.filter((doc) => {
+        const data = doc.data();
+        const isDatingGroupA = data.dating?.datingGroup === "A" && data.dating?.datingIsOn === true;
+        const isMeetingGroupA = data.meeting?.meetingGroup === "A" && data.meeting?.meetingIsOn === true;
+        return isDatingGroupA || isMeetingGroupA; // 조건: 데이팅 또는 미팅 그룹이 A이면서 활성화된 유저
+      }).map((doc) => ({
+        id: doc.id, // 유저 ID
+        userName: doc.data().userName, // 유저 이름
+        userPhone: doc.data().userPhone, // 유저 전화번호
+        userGender: doc.data().userGender, // 유저 성별
+      }))
   );
 
   const sentNumbers = new Set(); // 중복 방지

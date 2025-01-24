@@ -71,11 +71,19 @@ function executeCardDeleteAllam(handleDate) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log("card Delete Allam start");
         const logs = []; // 로그 저장 배열
-        const users = yield firebase_1.default.collection("user").get().then((snapshot) => snapshot.docs.map((doc) => ({
-            id: doc.id,
-            userName: doc.data().userName,
-            userPhone: doc.data().userPhone,
-            userGender: doc.data().userGender,
+        const users = yield firebase_1.default.collection("user")
+            .get()
+            .then((snapshot) => snapshot.docs.filter((doc) => {
+            var _a, _b, _c, _d;
+            const data = doc.data();
+            const isDatingGroupA = ((_a = data.dating) === null || _a === void 0 ? void 0 : _a.datingGroup) === "A" && ((_b = data.dating) === null || _b === void 0 ? void 0 : _b.datingIsOn) === true;
+            const isMeetingGroupA = ((_c = data.meeting) === null || _c === void 0 ? void 0 : _c.meetingGroup) === "A" && ((_d = data.meeting) === null || _d === void 0 ? void 0 : _d.meetingIsOn) === true;
+            return isDatingGroupA || isMeetingGroupA; // 조건: 데이팅 또는 미팅 그룹이 A이면서 활성화된 유저
+        }).map((doc) => ({
+            id: doc.id, // 유저 ID
+            userName: doc.data().userName, // 유저 이름
+            userPhone: doc.data().userPhone, // 유저 전화번호
+            userGender: doc.data().userGender, // 유저 성별
         })));
         const sentNumbers = new Set(); // 중복 방지
         let generalCardCount = 0;

@@ -119,16 +119,22 @@ export async function executePostpaidAlert(): Promise<string[]> {
   const lastTime = calculateLastTime(now);
 
   const users = await db.collection("user")
-    .where("userGender", "==", 1)
-    .get()
-    .then((snapshot) =>
-      snapshot.docs.map((doc) => ({
-        id: doc.id,
-        userName: doc.data().userName,
-        userPhone: doc.data().userPhone,
-        userGender: doc.data().userGender,
-      }))
-    );
+  .where("userGender", "==", 1)
+  .get()
+  .then((snapshot) => 
+    snapshot.docs.filter(doc => {
+      const data = doc.data();
+      const isDatingGroupA = data.dating?.datingGroup == "A" && data.dating?.datingIsOn == true;
+      const isMeetingGroupA = data.meeting?.meetingGroup == "A" && data.meeting?.meetingIsOn == true;
+      return isDatingGroupA || isMeetingGroupA;
+    }).map((doc) => ({
+      id: doc.id,
+      userName: doc.data().userName,
+      userPhone: doc.data().userPhone,
+      userGender: doc.data().userGender,
+    }))
+  );
+
 
   const sentNumbers = new Set();
   let totalMaleUsers = 0;

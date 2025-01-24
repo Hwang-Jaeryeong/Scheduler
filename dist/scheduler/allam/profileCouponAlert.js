@@ -12,6 +12,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.calculateLastTime = calculateLastTime;
+exports.calculateTwoTimesAgo = calculateTwoTimesAgo;
 exports.executeProfileCouponAlert = executeProfileCouponAlert;
 const dotenv_1 = __importDefault(require("dotenv"));
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
@@ -68,8 +70,8 @@ function checkPrepaid(userId, lastTime) {
                 .where("datingMatchTime", "<=", firestore_1.Timestamp.fromDate(endTime))
                 .get(),
         ]);
-        return snapshots.some((snapshot) => snapshot.docs.some((doc) => doc.data().meetingMatchPayMale === 3 ||
-            doc.data().datingMatchPayMale === 3));
+        return snapshots.some((snapshot) => snapshot.docs.some((doc) => doc.data().meetingMatchPayMale == 3 ||
+            doc.data().datingMatchPayMale == 3));
     });
 }
 // 메시지 생성 함수
@@ -92,21 +94,27 @@ function executeProfileCouponAlert(handleDate) {
         const now = handleDate ? new Date(handleDate) : firestore_1.Timestamp.now().toDate();
         const lastTime = calculateLastTime(now);
         const users = yield firebase_1.default.collection("user")
-            .where("userGender", "==", 1)
+            .where("userGender", "==", 1) // 남성 유저만 가져오기
             .get()
-            .then((snapshot) => snapshot.docs.map((doc) => {
+            .then((snapshot) => snapshot.docs.filter((doc) => {
+            var _a, _b, _c, _d;
+            const data = doc.data();
+            const isDatingGroupA = ((_a = data.dating) === null || _a === void 0 ? void 0 : _a.datingGroup) === "A" && ((_b = data.dating) === null || _b === void 0 ? void 0 : _b.datingIsOn) === true;
+            const isMeetingGroupA = ((_c = data.meeting) === null || _c === void 0 ? void 0 : _c.meetingGroup) === "A" && ((_d = data.meeting) === null || _d === void 0 ? void 0 : _d.meetingIsOn) === true;
+            return isDatingGroupA || isMeetingGroupA; // 데이팅 또는 미팅 그룹이 A이면서 활성화된 유저
+        }).map((doc) => {
             var _a, _b, _c, _d;
             return ({
-                id: doc.id,
-                userName: doc.data().userName,
-                userPhone: doc.data().userPhone,
-                userGender: doc.data().userGender,
-                userPointBuy: doc.data().userPointBuy || 0,
-                userPointUse: doc.data().userPointUse || 0,
-                meetingIsOn: ((_a = doc.data().meeting) === null || _a === void 0 ? void 0 : _a.meetingIsOn) || false,
-                meetingGroup: ((_b = doc.data().meeting) === null || _b === void 0 ? void 0 : _b.meetingGroup) || "",
-                datingIsOn: ((_c = doc.data().dating) === null || _c === void 0 ? void 0 : _c.datingIsOn) || false,
-                datingGroup: ((_d = doc.data().dating) === null || _d === void 0 ? void 0 : _d.datingGroup) || "",
+                id: doc.id, // 유저 ID
+                userName: doc.data().userName, // 유저 이름
+                userPhone: doc.data().userPhone, // 유저 전화번호
+                userGender: doc.data().userGender, // 유저 성별
+                userPointBuy: doc.data().userPointBuy || 0, // 유저 구매 포인트
+                userPointUse: doc.data().userPointUse || 0, // 유저 사용 포인트
+                meetingIsOn: ((_a = doc.data().meeting) === null || _a === void 0 ? void 0 : _a.meetingIsOn) || false, // 미팅 활성화 여부
+                meetingGroup: ((_b = doc.data().meeting) === null || _b === void 0 ? void 0 : _b.meetingGroup) || "", // 미팅 그룹
+                datingIsOn: ((_c = doc.data().dating) === null || _c === void 0 ? void 0 : _c.datingIsOn) || false, // 데이팅 활성화 여부
+                datingGroup: ((_d = doc.data().dating) === null || _d === void 0 ? void 0 : _d.datingGroup) || "", // 데이팅 그룹
             });
         }));
         const sentNumbers = new Set();

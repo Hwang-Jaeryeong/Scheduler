@@ -119,7 +119,13 @@ function executePostpaidAlert() {
         const users = yield firebase_1.default.collection("user")
             .where("userGender", "==", 1)
             .get()
-            .then((snapshot) => snapshot.docs.map((doc) => ({
+            .then((snapshot) => snapshot.docs.filter(doc => {
+            var _a, _b, _c, _d;
+            const data = doc.data();
+            const isDatingGroupA = ((_a = data.dating) === null || _a === void 0 ? void 0 : _a.datingGroup) == "A" && ((_b = data.dating) === null || _b === void 0 ? void 0 : _b.datingIsOn) == true;
+            const isMeetingGroupA = ((_c = data.meeting) === null || _c === void 0 ? void 0 : _c.meetingGroup) == "A" && ((_d = data.meeting) === null || _d === void 0 ? void 0 : _d.meetingIsOn) == true;
+            return isDatingGroupA || isMeetingGroupA;
+        }).map((doc) => ({
             id: doc.id,
             userName: doc.data().userName,
             userPhone: doc.data().userPhone,

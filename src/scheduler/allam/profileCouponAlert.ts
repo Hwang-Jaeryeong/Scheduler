@@ -8,7 +8,7 @@ dotenv.config();
 // const testPhone = process.env.TEST_PHONE;
 
 // 기준 타임 계산 함수
-function calculateLastTime(now: Date): Date {
+export function calculateLastTime(now: Date): Date {
   const times = [13, 23];
   const lastTime = new Date(now);
 
@@ -24,7 +24,7 @@ function calculateLastTime(now: Date): Date {
   return lastTime;
 }
 
-function calculateTwoTimesAgo(lastTime: Date): Date {
+export function calculateTwoTimesAgo(lastTime: Date): Date {
   const twoTimesAgo = new Date(lastTime);
 
   if (lastTime.getHours() === 13) {
@@ -63,8 +63,8 @@ async function checkPrepaid(userId: string, lastTime: Date): Promise<boolean> {
   return snapshots.some((snapshot) =>
     snapshot.docs.some(
       (doc) =>
-        doc.data().meetingMatchPayMale === 3 ||
-        doc.data().datingMatchPayMale === 3
+        doc.data().meetingMatchPayMale == 3 ||
+        doc.data().datingMatchPayMale == 3
     )
   );
 }
@@ -91,22 +91,28 @@ export async function executeProfileCouponAlert(handleDate?: Date): Promise<stri
   const lastTime = calculateLastTime(now);
 
   const users = await db.collection("user")
-    .where("userGender", "==", 1)
-    .get()
-    .then((snapshot) =>
-      snapshot.docs.map((doc) => ({
-        id: doc.id,
-        userName: doc.data().userName,
-        userPhone: doc.data().userPhone,
-        userGender: doc.data().userGender,
-        userPointBuy: doc.data().userPointBuy || 0,
-        userPointUse: doc.data().userPointUse || 0,
-        meetingIsOn: doc.data().meeting?.meetingIsOn || false,
-        meetingGroup: doc.data().meeting?.meetingGroup || "",
-        datingIsOn: doc.data().dating?.datingIsOn || false,
-        datingGroup: doc.data().dating?.datingGroup || "",
-      }))
-    );
+  .where("userGender", "==", 1)
+  .get()
+  .then((snapshot) => 
+    snapshot.docs.filter((doc) => {
+      const data = doc.data();
+      const isDatingGroupA = data.dating?.datingGroup === "A" && data.dating?.datingIsOn === true;
+      const isMeetingGroupA = data.meeting?.meetingGroup === "A" && data.meeting?.meetingIsOn === true;
+      return isDatingGroupA || isMeetingGroupA; // 데이팅 또는 미팅 그룹이 A이면서 활성화된 유저
+    }).map((doc) => ({
+      id: doc.id,
+      userName: doc.data().userName,
+      userPhone: doc.data().userPhone,
+      userGender: doc.data().userGender,
+      userPointBuy: doc.data().userPointBuy || 0,
+      userPointUse: doc.data().userPointUse || 0,
+      meetingIsOn: doc.data().meeting?.meetingIsOn || false,
+      meetingGroup: doc.data().meeting?.meetingGroup || "",
+      datingIsOn: doc.data().dating?.datingIsOn || false, 
+      datingGroup: doc.data().dating?.datingGroup || "",
+    }))
+  );
+
 
   const sentNumbers = new Set();
   let totalUsers = users.length;

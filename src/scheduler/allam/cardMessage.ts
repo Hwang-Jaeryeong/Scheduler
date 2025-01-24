@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 import db from "../../firebase/firebase";
 import { Timestamp } from "firebase-admin/firestore";
 // import cron from "node-cron";
-import { sendSMS } from "../sms"
+import { sendSMS } from "../sms";
+import { calculateLastTime, calculateTwoTimesAgo } from "./profileCouponAlert";
 
 dotenv.config();
 const testPhone = process.env.TEST_PHONE;
@@ -22,45 +23,55 @@ async function getRecentUsers(): Promise<any[]> {
 }
 
 // 사용자 카드 확인
-export async function checkUserCards(user: any, handleDate: Date): Promise<{ meetingCards: any[]; datingCards: any[] }> {
+export async function checkUserCards(
+  user: any,
+  handleDate: Date
+): Promise<{ meetingCards: any[]; datingCards: any[] }> {
   const meetingCards: any[] = [];
   const datingCards: any[] = [];
 
-  let maleMatchTime: Date, femaleMatchTime: Date;
-
-  if (handleDate.getHours() >= 23) {
-    maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0));
-    femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000);
-  } else if (handleDate.getHours() >= 13) {
-    maleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0));
-    femaleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000);
-  } else {
-    maleMatchTime = new Date(handleDate.setHours(23, 0, 0, 0) - 24 * 60 * 60 * 1000);
-    femaleMatchTime = new Date(handleDate.setHours(13, 0, 0, 0) - 24 * 60 * 60 * 1000);
-  }
+  // 기준 시간 계산
+  const lastTime = calculateLastTime(handleDate); // 최근 기준 시간 (13시 또는 23시)
+  const twoTimesAgo = calculateTwoTimesAgo(lastTime); // 두 타임 전 기준 시간
 
   if (user.userGender === 1) {
+    // 남성 유저: 기준 시간 = lastTime ± 1분
+    const startTime = new Date(lastTime);
+    startTime.setMinutes(startTime.getMinutes() - 1); // -1분
+    const endTime = new Date(lastTime);
+    endTime.setMinutes(endTime.getMinutes() + 1); // +1분
+
     const meetingSnapshot = await db.collection("meetingMatch")
       .where("meetingMatchUserIdMale", "==", user.id)
-      .where("meetingMatchTime", "==", Timestamp.fromDate(maleMatchTime))
+      .where("meetingMatchTime", ">=", Timestamp.fromDate(startTime))
+      .where("meetingMatchTime", "<=", Timestamp.fromDate(endTime))
       .get();
 
     const datingSnapshot = await db.collection("datingMatch")
       .where("datingMatchUserIdMale", "==", user.id)
-      .where("datingMatchTime", "==", Timestamp.fromDate(maleMatchTime))
+      .where("datingMatchTime", ">=", Timestamp.fromDate(startTime))
+      .where("datingMatchTime", "<=", Timestamp.fromDate(endTime))
       .get();
 
     meetingCards.push(...meetingSnapshot.docs.map((doc) => doc.data()));
     datingCards.push(...datingSnapshot.docs.map((doc) => doc.data()));
   } else {
+    // 여성 유저: 기준 시간 = twoTimesAgo ± 1분
+    const startTime = new Date(twoTimesAgo);
+    startTime.setMinutes(startTime.getMinutes() - 1); // -1분
+    const endTime = new Date(twoTimesAgo);
+    endTime.setMinutes(endTime.getMinutes() + 1); // +1분
+
     const meetingSnapshot = await db.collection("meetingMatch")
       .where("meetingMatchUserIdFemale", "==", user.id)
-      .where("meetingMatchTime", "==", Timestamp.fromDate(femaleMatchTime))
+      .where("meetingMatchTime", ">=", Timestamp.fromDate(startTime))
+      .where("meetingMatchTime", "<=", Timestamp.fromDate(endTime))
       .get();
 
     const datingSnapshot = await db.collection("datingMatch")
       .where("datingMatchUserIdFemale", "==", user.id)
-      .where("datingMatchTime", "==", Timestamp.fromDate(femaleMatchTime))
+      .where("datingMatchTime", ">=", Timestamp.fromDate(startTime))
+      .where("datingMatchTime", "<=", Timestamp.fromDate(endTime))
       .get();
 
     meetingCards.push(...meetingSnapshot.docs.map((doc) => doc.data()));

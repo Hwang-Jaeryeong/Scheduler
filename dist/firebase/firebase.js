@@ -44,7 +44,7 @@ dotenv_1.default.config();
 admin.initializeApp({
     credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
-        privateKey: (_a = process.env.FIREBASE_PRIVATE_KEY) === null || _a === void 0 ? void 0 : _a.replace(/\\n/g, "\n"), // 줄바꿈 처리
+        privateKey: (_a = process.env.FIREBASE_PRIVATE_KEY) === null || _a === void 0 ? void 0 : _a.replace(/\\n/g, "\n"),
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     }),
     databaseURL: "https://yeonpick-quokka.firebaseio.com", // Firebase Database URL
