@@ -14,32 +14,44 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runSchedulerTask = runSchedulerTask;
 const dotenv_1 = __importDefault(require("dotenv"));
-const node_cron_1 = __importDefault(require("node-cron"));
+// import cron from "node-cron";
 const firebase_1 = __importDefault(require("../../firebase/firebase"));
 const sms_1 = require("../sms");
-dotenv_1.default.config(); // .env 파일 로드
+dotenv_1.default.config();
 // 신규 미설문자 처리 함수
 function handleNewIncompleteSurveys() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const snapshot = yield firebase_1.default
+            // A, B, C에 해당 안되는 ....?
+            const datingSnapshot = yield firebase_1.default
                 .collection("user")
-                .where("dating.datingGroup", "==", "D")
-                .where("meeting.meetingGroup", "==", "D")
+                .where("dating.datingGroup", "not-in", ["A", "B", "C"])
                 .get();
-            if (snapshot.empty) {
-                console.log("미설문자 대상자가 없습니다.");
+            const meetingSnapshot = yield firebase_1.default
+                .collection("user")
+                .where("meeting.meetingGroup", "not-in", ["A", "B", "C"])
+                .get();
+            const uniqueUsers = new Map();
+            datingSnapshot.forEach((doc) => uniqueUsers.set(doc.id, doc.data()));
+            meetingSnapshot.forEach((doc) => uniqueUsers.set(doc.id, doc.data()));
+            const users = Array.from(uniqueUsers.values());
+            // 대상자가 없을 경우 로깅 후 종료
+            if (users.length === 0) {
+                console.log("필터링된 대상자가 없습니다.");
                 return;
             }
-            console.log(`[${snapshot.size}명] 미설문자 대상자 확인 완료`);
+            console.log(`[${users.length}명] 필터링되지 않은 대상자 확인 완료`);
             let firstUserProcessed = false; // 첫 번째 사용자 처리 여부
-            // QuerySnapshot을 배열로 변환하여 forEach 대신 for-of 사용
-            const docs = snapshot.docs;
-            for (let index = 0; index < docs.length; index++) {
-                const doc = docs[index];
-                const user = doc.data();
+            for (let index = 0; index < users.length; index++) {
+                const user = users[index];
                 const name = user.userName;
+                // 테스트를 위한 전화번호 또는 실제 전화번호
+                // const phone = process.env.TEST_PHONE || user.phoneNumber || "";
                 const phone = process.env.TEST_PHONE || "";
+                if (!phone) {
+                    console.warn(`대상자 [${index + 1}]의 전화번호가 없습니다: ${JSON.stringify(user)}`);
+                    continue; // 전화번호가 없으면 다음 사용자로 넘어감
+                }
                 const message = `(광고) ${name}님, 아직 설문이 완료되지 않았어요! 설문을 완료하고 프로필을 완성해보세요 :)`;
                 if (!firstUserProcessed) {
                     // 첫 번째 사용자에게만 SMS 전송
@@ -49,7 +61,7 @@ function handleNewIncompleteSurveys() {
                 }
                 else {
                     // 나머지 사용자 정보는 콘솔에 출력
-                    console.log(`대상자 [${index + 1}]: ${JSON.stringify(user)}`);
+                    // console.log(`대상자 [${index + 1}]: ${JSON.stringify(user.userPhone)}`);
                 }
             }
         }
@@ -66,6 +78,9 @@ function runSchedulerTask() {
         console.log("[스케줄러] 신규 미설문자 처리 완료");
     });
 }
-node_cron_1.default.schedule("25 14 * * *", () => __awaiter(void 0, void 0, void 0, function* () {
-    yield runSchedulerTask();
-}));
+if (require.main === module) {
+    runSchedulerTask();
+}
+// cron.schedule("20 15 * * *", async () => {
+//   await runSchedulerTask();
+// });

@@ -94,7 +94,7 @@ function executeProfileCouponAlert(handleDate) {
         const now = handleDate ? new Date(handleDate) : firestore_1.Timestamp.now().toDate();
         const lastTime = calculateLastTime(now);
         const users = yield firebase_1.default.collection("user")
-            .where("userGender", "==", 1) // 남성 유저만 가져오기
+            .where("userGender", "==", 1)
             .get()
             .then((snapshot) => snapshot.docs.filter((doc) => {
             var _a, _b, _c, _d;
@@ -105,16 +105,16 @@ function executeProfileCouponAlert(handleDate) {
         }).map((doc) => {
             var _a, _b, _c, _d;
             return ({
-                id: doc.id, // 유저 ID
-                userName: doc.data().userName, // 유저 이름
-                userPhone: doc.data().userPhone, // 유저 전화번호
-                userGender: doc.data().userGender, // 유저 성별
-                userPointBuy: doc.data().userPointBuy || 0, // 유저 구매 포인트
-                userPointUse: doc.data().userPointUse || 0, // 유저 사용 포인트
-                meetingIsOn: ((_a = doc.data().meeting) === null || _a === void 0 ? void 0 : _a.meetingIsOn) || false, // 미팅 활성화 여부
-                meetingGroup: ((_b = doc.data().meeting) === null || _b === void 0 ? void 0 : _b.meetingGroup) || "", // 미팅 그룹
-                datingIsOn: ((_c = doc.data().dating) === null || _c === void 0 ? void 0 : _c.datingIsOn) || false, // 데이팅 활성화 여부
-                datingGroup: ((_d = doc.data().dating) === null || _d === void 0 ? void 0 : _d.datingGroup) || "", // 데이팅 그룹
+                id: doc.id,
+                userName: doc.data().userName,
+                userPhone: doc.data().userPhone,
+                userGender: doc.data().userGender,
+                userPointBuy: doc.data().userPointBuy || 0,
+                userPointUse: doc.data().userPointUse || 0,
+                meetingIsOn: ((_a = doc.data().meeting) === null || _a === void 0 ? void 0 : _a.meetingIsOn) || false,
+                meetingGroup: ((_b = doc.data().meeting) === null || _b === void 0 ? void 0 : _b.meetingGroup) || "",
+                datingIsOn: ((_c = doc.data().dating) === null || _c === void 0 ? void 0 : _c.datingIsOn) || false,
+                datingGroup: ((_d = doc.data().dating) === null || _d === void 0 ? void 0 : _d.datingGroup) || "",
             });
         }));
         const sentNumbers = new Set();
