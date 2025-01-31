@@ -66,3 +66,7 @@ jobs:
           sudo docker-compose -f docker-compose.yml up --build -d
           EOF
         shell: bash
+
+      - name: Create firebase-key.json
+        run: |
+          echo "${{ secrets.FIREBASE_KEY }}" > /home/ubuntu/Scheduler/firebase-key.json
