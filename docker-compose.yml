@@ -22,3 +22,4 @@ services:
       - "443:443"
     depends_on:
       - app
+    restart: always
