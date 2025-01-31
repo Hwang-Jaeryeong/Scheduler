@@ -69,4 +69,9 @@ jobs:
 
       - name: Create firebase-key.json
         run: |
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+          mkdir -p /home/ubuntu/Scheduler
           echo "${{ secrets.FIREBASE_KEY }}" > /home/ubuntu/Scheduler/firebase-key.json
+          chmod 600 /home/ubuntu/Scheduler/firebase-key.json
+          EOF
+        shell: bash
