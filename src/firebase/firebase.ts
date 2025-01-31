@@ -17,3 +17,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 export default db;
+
+console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID);
+console.log("FIREBASE_PRIVATE_KEY:", process.env.FIREBASE_PRIVATE_KEY?.substring(0, 20) + "..."); // 일부만 출력
+console.log("FIREBASE_CLIENT_EMAIL:", process.env.FIREBASE_CLIENT_EMAIL);
