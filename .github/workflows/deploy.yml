@@ -58,15 +58,15 @@ jobs:
 
       - name: Create and fix .env file
         run: |
-        ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-        cd /home/ubuntu/Scheduler
-        echo "${{ secrets.ENV_VARS }}" | base64 --decode > .env
-        chmod 600 .env
-        sudo apt install -y dos2unix iconv
-        dos2unix .env
-        iconv -f utf-8 -t utf-8 .env -o .env.utf8 && mv .env.utf8 .env
-        EOF
-      shell: bash
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /home/ubuntu/Scheduler
+            echo "${{ secrets.ENV_VARS }}" | base64 --decode > .env
+            chmod 600 .env
+            sudo apt install -y dos2unix iconv
+            dos2unix .env
+            iconv -f utf-8 -t utf-8 .env -o .env.utf8 && mv .env.utf8 .env
+          EOF
+        shell: bash
 
 
       - name: Create firebase-key.json
