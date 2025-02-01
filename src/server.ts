@@ -23,8 +23,8 @@ app.get('/', (_, res) => {
 });
 
 
-// POST /card-message
-app.post("/card-message", async (_, res) => {
+// GET /card-message
+app.get("/card-message", async (_, res) => {
     logs.length = 0; // 이전 요청 로그 초기화
 
     try {
@@ -45,8 +45,8 @@ app.post("/card-message", async (_, res) => {
     }    
 });
 
-// POST /card-delete-allam
-app.post("/card-delete-allam", async (req, res) => {
+// GET /card-delete-allam
+app.get("/card-delete-allam", async (req, res) => {
     try {
       const handleDate = req.body.handleDate ? new Date(req.body.handleDate) : new Date();
   

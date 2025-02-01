@@ -31,8 +31,8 @@ function logToConsole(message) {
 app.get('/', (_, res) => {
     res.send('Hello, World! Express 서버가 정상적으로 실행 중입니다.');
 });
-// POST /card-message
-app.post("/card-message", (_, res) => __awaiter(void 0, void 0, void 0, function* () {
+// GET /card-message
+app.get("/card-message", (_, res) => __awaiter(void 0, void 0, void 0, function* () {
     logs.length = 0; // 이전 요청 로그 초기화
     try {
         logToConsole("POST /card-message 요청 수신");
@@ -50,8 +50,8 @@ app.post("/card-message", (_, res) => __awaiter(void 0, void 0, void 0, function
         console.error(`cardMessage 실행 중 에러: ${err.message}`);
     }
 }));
-// POST /card-delete-allam
-app.post("/card-delete-allam", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// GET /card-delete-allam
+app.get("/card-delete-allam", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const handleDate = req.body.handleDate ? new Date(req.body.handleDate) : new Date();
         // cardDeleteAllam 실행

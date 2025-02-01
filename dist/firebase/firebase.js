@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a, _b;
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 const admin = __importStar(require("firebase-admin"));
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -52,6 +52,3 @@ admin.initializeApp({
 // Firestore 인스턴스 가져오기
 const db = admin.firestore();
 exports.default = db;
-console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID);
-console.log("FIREBASE_PRIVATE_KEY:", ((_b = process.env.FIREBASE_PRIVATE_KEY) === null || _b === void 0 ? void 0 : _b.substring(0, 20)) + "..."); // 일부만 출력
-console.log("FIREBASE_CLIENT_EMAIL:", process.env.FIREBASE_CLIENT_EMAIL);
