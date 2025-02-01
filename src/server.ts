@@ -18,7 +18,7 @@ function logToConsole(message: string) {
     console.log(message);
     logs.push(message);
 }
-app.get('/', (req, res) => {
+app.get('/', (_, res) => {
   res.send('Hello, World! Express 서버가 정상적으로 실행 중입니다.');
 });
 
