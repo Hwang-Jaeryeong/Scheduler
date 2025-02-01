@@ -1,11 +1,12 @@
 # Use Node.js base image
-FROM node:16
+FROM node:18
 
 # Set the working directory
 WORKDIR /app
 
 # Copy package.json and package-lock.json files first (for caching)
 COPY package*.json ./
+RUN npm install --only=production
 
 # Install dependencies (including devDependencies for build)
 RUN npm install
@@ -23,4 +24,4 @@ RUN npm prune --production
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["node", "--max-old-space-size=16000", "dist/server.js"]

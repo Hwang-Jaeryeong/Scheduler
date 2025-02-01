@@ -54,24 +54,28 @@ jobs:
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
-          echo "${{ secrets.ENV_VARS }}" > .env
+          echo "${{ secrets.ENV_VARS }}" | base64 --decode > .env
+          chmod 600 .env
           EOF
         shell: bash
+
 
       - name: Deploy using Docker Compose
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
-          sudo docker-compose -f docker-compose.yml down
-          sudo docker-compose -f docker-compose.yml up --build -d
+          sudo docker-compose down
+          npm install
+          npm run build
+          sudo docker-compose up --build -d
           EOF
         shell: bash
 
       - name: Create firebase-key.json
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
-          mkdir -p /home/ubuntu/Scheduler
-          echo "${{ secrets.FIREBASE_KEY }}" > /home/ubuntu/Scheduler/firebase-key.json
-          chmod 600 /home/ubuntu/Scheduler/firebase-key.json
+          cd /home/ubuntu/Scheduler
+          echo "${{ secrets.FIREBASE_KEY }}" | base64 --decode > firebase-key.json
+          chmod 600 firebase-key.json
           EOF
         shell: bash
