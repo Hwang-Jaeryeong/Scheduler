@@ -8,7 +8,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: production
+      - NODE_ENV=production
     env_file:
       - .env
     restart: always
@@ -16,11 +16,11 @@ services:
       - app-network
 
   nginx:
-    image: nginx:latest
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+    image: nginx:alpine  # ✅ 용량이 작은 nginx:alpine 사용
     ports:
       - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro  # ✅ 읽기 전용(:ro) 마운트
     depends_on:
       - app
     restart: always

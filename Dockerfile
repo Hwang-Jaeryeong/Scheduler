@@ -1,27 +1,31 @@
-# Use Node.js base image
-FROM node:18
+# ✅ 1️⃣ 빌드 단계 (용량을 줄이기 위해 node:18-alpine 사용)
+FROM node:18-alpine AS builder
 
-# Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json files first (for caching)
+# ✅ 패키지 설치 (빌드에 필요한 모든 의존성 포함)
 COPY package*.json ./
-RUN npm install --only=production
-
-# Install dependencies (including devDependencies for build)
 RUN npm install
 
-# Copy the rest of the application code
+# ✅ 애플리케이션 코드 복사 후 빌드
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Remove devDependencies for production
+# ✅ 불필요한 의존성 제거 (production 전환)
 RUN npm prune --production
 
-# Expose the application port
+# ✅ 2️⃣ 실행 단계 (최소한의 파일만 포함)
+FROM node:18-alpine
+
+WORKDIR /app
+
+# ✅ 빌드 결과물만 복사 (용량 최적화)
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+
+# ✅ 포트 노출
 EXPOSE 3000
 
-# Start the application
+# ✅ 앱 실행 (메모리 최적화 옵션 포함)
 CMD ["node", "--max-old-space-size=16000", "dist/server.js"]
