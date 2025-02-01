@@ -12,6 +12,8 @@ services:
     env_file:
       - .env
     restart: always
+    networks:
+      - app-network
 
   nginx:
     image: nginx:latest
@@ -22,3 +24,9 @@ services:
     depends_on:
       - app
     restart: always
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
