@@ -3,6 +3,7 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+RUN apk add --no-cache python3 py3-pip make g++
 # ✅ 패키지 설치 (빌드에 필요한 모든 의존성 포함)
 COPY package*.json ./
 RUN npm install
