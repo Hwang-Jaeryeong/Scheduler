@@ -24,12 +24,6 @@ jobs:
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts || echo "Host key scan failed"
         shell: bash
 
-      - name: Verify known_hosts
-        run: |
-          echo "Verifying known_hosts content..."
-          cat ~/.ssh/known_hosts
-        shell: bash
-
       - name: Test SSH connection
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} echo "SSH connection successful!"
@@ -39,43 +33,76 @@ jobs:
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           sudo apt update
-          sudo apt install -y docker-compose
+          sudo apt install -y ca-certificates curl gnupg
+          sudo mkdir -m 0755 -p /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc > /dev/null
+          echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt update
+          sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
           sudo usermod -aG docker ubuntu
           if [ ! -d "/home/ubuntu/Scheduler" ]; then
             git clone https://github.com/Hwang-Jaeryeong/Scheduler.git /home/ubuntu/Scheduler
           fi
-          cd /home/ubuntu/Scheduler
-          git pull origin main
-          npm install
           EOF
         shell: bash
 
-      - name: Create .env file
+      - name: Deploy application
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
-          echo "${{ secrets.ENV_VARS }}" | base64 --decode > .env
-          chmod 600 .env
+          git pull origin main
+          npm install
+          npm run build
           EOF
         shell: bash
 
+      - name: Create and fix .env file
+        run: |
+        ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+        cd /home/ubuntu/Scheduler
+        echo "${{ secrets.ENV_VARS }}" | base64 --decode > .env
+        chmod 600 .env
+        sudo apt install -y dos2unix iconv
+        dos2unix .env
+        iconv -f utf-8 -t utf-8 .env -o .env.utf8 && mv .env.utf8 .env
+        EOF
+      shell: bash
+
+      - name: Create firebase-key.json
+        run: |
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+          cd /home/ubuntu/Scheduler
+          echo "${{ secrets.FIREBASE_KEY_BASE64 }}" | base64 --decode > firebase-key.json
+          chmod 600 firebase-key.json
+          EOF
+        shell: bash
+
+      - name: Configure Nginx and Restart
+        run: |
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+          sudo cp /home/ubuntu/Scheduler/nginx.conf /etc/nginx/nginx.conf
+          sudo systemctl restart nginx
+          EOF
+        shell: bash
+
+      - name: Add Swap Memory (Fix Out of Memory Issue)
+        run: |
+          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+          if [ ! -f /swapfile ]; then
+            sudo fallocate -l 2G /swapfile
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile
+            echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
+          fi
+          EOF
+        shell: bash
 
       - name: Deploy using Docker Compose
         run: |
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
           sudo docker-compose down
-          npm install
-          npm run build
           sudo docker-compose up --build -d
-          EOF
-        shell: bash
-
-      - name: Create firebase-key.json
-        run: |
-          ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
-          cd /home/ubuntu/Scheduler
-          echo "${{ secrets.FIREBASE_KEY }}" | base64 --decode > firebase-key.json
-          chmod 600 firebase-key.json
           EOF
         shell: bash
