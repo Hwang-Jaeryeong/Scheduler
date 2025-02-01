@@ -28,10 +28,9 @@ function logToConsole(message) {
     console.log(message);
     logs.push(message);
 }
-app.get('/', (req, res) => {
+app.get('/', (_, res) => {
     res.send('Hello, World! Express 서버가 정상적으로 실행 중입니다.');
 });
-
 // POST /card-message
 app.post("/card-message", (_, res) => __awaiter(void 0, void 0, void 0, function* () {
     logs.length = 0; // 이전 요청 로그 초기화
