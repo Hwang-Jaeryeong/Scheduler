@@ -18,7 +18,7 @@ services:
   nginx:
     image: nginx:alpine  # ✅ 경량 nginx 사용
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro  # ✅ 읽기 전용(:ro)로 마운트
     depends_on:
