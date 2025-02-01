@@ -11,6 +11,8 @@ services:
       - NODE_ENV=production
     env_file:
       - .env
+    volumes:
+      - ./firebase-key.json:/app/firebase-key.json  # 🔥 Firebase 키 마운트 추가
     restart: always
     networks:
       - app-network
