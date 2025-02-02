@@ -16,15 +16,20 @@ const firebase_1 = __importDefault(require("./firebase"));
 function fetchUserData() {
     return __awaiter(this, void 0, void 0, function* () {
         const snapshot = yield firebase_1.default.collection("user")
-            .orderBy("admin.handleDate", "desc")
-            .limit(10)
+            .where("userGender", "==", 1) // userGender가 1인 사용자만 필터링
+            .limit(3) // 3명만 가져오기
             .get();
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            console.log(`User ID: 2205081206001340`);
-            console.log(`userPointBuy: ${data.userPointBuy}`);
-            console.log(`userPointUse: ${data.userPointUse}`);
-        });
+        if (snapshot.empty) {
+            console.log("No matching documents.");
+        }
+        else {
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                console.log(`User ID: ${doc.id}`);
+                console.log(`userGender: ${data.userGender}`);
+                console.log(`userPhone: ${data.userPhone}`);
+            });
+        }
     });
 }
 fetchUserData().catch(err => console.error("Error fetching user data:", err));
