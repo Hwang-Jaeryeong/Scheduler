@@ -5,4 +5,4 @@ npm-debug.log*
 src/firebase/firebase-key.json
 
 # 환경 변수 파일
-.env
+.envfirebase-key.json
