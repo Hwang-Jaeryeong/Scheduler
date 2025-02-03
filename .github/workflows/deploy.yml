@@ -69,7 +69,16 @@ jobs:
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
           git pull origin main
+          
+          # ✅ Firebase 키 파일 복사
+          cp ~/firebase-key.json /home/ubuntu/Scheduler/firebase-key.json
+
+          # ✅ TypeScript 프로젝트 빌드
+          npm install  # 필요한 패키지 설치
+          npx tsc  # TypeScript → JavaScript 변환
+          
+          # ✅ Docker Compose 실행
           sudo docker-compose down
-          sudo docker-compose up --build -d
+          sudo docker-compose up —build -d
           EOF
         shell: bash
