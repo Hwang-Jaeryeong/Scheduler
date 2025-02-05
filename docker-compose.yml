@@ -12,7 +12,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./firebase-key.json:/app/firebase-key.json  # 기본 경로
+      - ./firebase-key.json:/app/firebase-key.json
       - ./firebase-key.json:/app/dist/firebase-key.json
     command: sh -c "chmod 644 /app/firebase-key.json && node dist/server.js"
     restart: always
