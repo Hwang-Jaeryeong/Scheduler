@@ -25,6 +25,12 @@ RUN npm prune --production
 # ✅ 2️⃣ 실행 단계 (최소한의 파일만 포함)
 FROM node:18-alpine
 
+# ✅ 시간대 설정을 실행 컨테이너에서도 유지
+ENV TZ=Asia/Seoul
+RUN apk add --no-cache tzdata \
+    && cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime \
+    && echo "Asia/Seoul" > /etc/timezone
+
 # ✅ 빌드 결과물만 복사 (용량 최적화)
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules

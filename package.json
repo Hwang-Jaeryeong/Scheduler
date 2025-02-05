@@ -2,7 +2,8 @@
   "name": "yeonpik",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",  "scripts": {
+  "main": "index.js",
+  "scripts": {
     "start": "node --max-old-space-size=20000 dist/server.js",
     "build": "tsc && cp src/firebase/firebase-key.json dist/firebase-key.json",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,7 +18,9 @@
     "express": "^4.21.2",
     "firebase-admin": "^13.0.2",
     "heapdump": "^0.3.15",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "tzdata": "^1.0.43",
+    "tzdate": "^1.0.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

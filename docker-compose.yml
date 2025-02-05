@@ -14,6 +14,7 @@ services:
       - .env
     volumes:
       - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
       - ./firebase-key.json:/app/firebase-key.json
       - ./firebase-key.json:/app/dist/firebase-key.json
     command: sh -c "chmod 644 /app/firebase-key.json && node dist/server.js"

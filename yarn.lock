@@ -1302,6 +1302,18 @@ mime@1.6.0:
   resolved "https://registry.npmjs.org/mime/-/mime-1.6.0.tgz"
   integrity sha512-x0Vn8spI+wuJ1O6S7gnbaQg8Pxh4NNHb7KSINmEWKiPE4RKOplvijn+NkmYmmRgP68mc70j2EbeTFRsrswaQeg==
 
+moment-timezone@^0.4.0:
+  version "0.4.1"
+  resolved "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.4.1.tgz"
+  integrity sha512-5cNPVUwaVJDCe9JM8m/qz17f9SkaI8rpnRUyDJi2K5HAd6EwhuQ3n5nLclZkNC/qJnomKgQH2TIu70Gy2dxFKA==
+  dependencies:
+    moment ">= 2.6.0"
+
+"moment@>= 2.6.0":
+  version "2.30.1"
+  resolved "https://registry.npmjs.org/moment/-/moment-2.30.1.tgz"
+  integrity sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==
+
 ms@^2.1.1, ms@^2.1.3, ms@2.1.3:
   version "2.1.3"
   resolved "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz"
@@ -1690,6 +1702,18 @@ typescript@^5.7.2, typescript@>=2.7:
   version "5.7.2"
   resolved "https://registry.npmjs.org/typescript/-/typescript-5.7.2.tgz"
   integrity sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==
+
+tzdata@^1.0.43:
+  version "1.0.43"
+  resolved "https://registry.npmjs.org/tzdata/-/tzdata-1.0.43.tgz"
+  integrity sha512-TOSJd221gho3QqgINM4dvdZzB6MZ4KFMDKb5iI6Jn+8skJM9llWF9SANT+PmVO+VQP9mn0QDY6JhCfCT9shTig==
+
+tzdate@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.npmjs.org/tzdate/-/tzdate-1.0.1.tgz"
+  integrity sha512-Gw0kNkWVYbfui3MZQwxQVvxV1ROPm3kVu0FO/LSf2mhOAvmV+5nFY6NMW3IWxx/j8ilY6Zb+2QgXkNMKlV3cLw==
+  dependencies:
+    moment-timezone "^0.4.0"
 
 uid-safe@2.1.5:
   version "2.1.5"
