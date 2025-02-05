@@ -17,8 +17,10 @@ if (!admin.apps.length) {
 // Firestore 인스턴스 가져오기
 const db = admin.firestore();
 
-export default db;
+// 🔥 캐시 비활성화 설정 추가
+db.settings({
+  ignoreUndefinedProperties: true,
+  timestampsInSnapshots: true, // Firestore에서 Timestamp를 Date 객체로 변환
+});
 
-console.log(process.env.FIREBASE_PROJECT_ID);
-console.log(process.env.FIREBASE_PRIVATE_KEY);
-console.log(process.env.FIREBASE_CLIENT_EMAIL);
+export default db;
