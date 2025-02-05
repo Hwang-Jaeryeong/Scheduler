@@ -79,10 +79,5 @@ jobs:
           
           # ✅ Docker Compose 실행
           sudo docker-compose up --build -d
-          
-          # ✅ 컨테이너 내부에서 Firebase 환경 변수 확인
-          sudo docker exec scheduler_app_1 sh -c "ls -la /app"
-          sudo docker exec scheduler_app_1 sh -c "cat /app/firebase-key.json"
-          sudo docker exec scheduler_app_1 sh -c "env | grep FIREBASE"
           EOF
         shell: bash

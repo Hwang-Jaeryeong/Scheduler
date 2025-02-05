@@ -4,6 +4,10 @@ FROM node:18-alpine AS builder
 # WORKDIR /app
 WORKDIR /app
 
+# 한국 시간대 설정
+ENV TZ=Asia/Seoul
+RUN apk add --no-cache tzdata
+
 RUN apk add --no-cache python3 py3-pip make g++
 # ✅ 패키지 설치 (빌드에 필요한 모든 의존성 포함)
 COPY package*.json ./
