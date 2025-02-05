@@ -16,6 +16,7 @@ jobs:
       - name: Decode Firebase key and save it
         run: |
           echo "${{ secrets.FIREBASE_KEY }}" | base64 --decode > ./firebase-key.json
+          cp ./firebase-key.json ./dist/firebase-key.json
         shell: bash
 
       - name: Decode ENV_VARS and apply to .env
@@ -69,10 +70,6 @@ jobs:
           ssh -i ec2-key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
           cd /home/ubuntu/Scheduler
           git pull origin main
-
-          # ✅ TypeScript 프로젝트 빌드
-          npm install  # 필요한 패키지 설치
-          npx tsc  # TypeScript → JavaScript 변환
           
           # ✅ Docker Compose 실행
           sudo docker-compose down
