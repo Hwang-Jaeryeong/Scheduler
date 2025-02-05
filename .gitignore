@@ -3,6 +3,8 @@ npm-debug.log*
 
 # Firebase Admin Key
 src/firebase/firebase-key.json
+firebase-key.json
+dist/firebase-key.json
 
 # 환경 변수 파일
 .envfirebase-key.json
