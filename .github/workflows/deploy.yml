@@ -71,8 +71,20 @@ jobs:
           cd /home/ubuntu/Scheduler
           git pull origin main
           
-          # ✅ Docker Compose 실행
+          # ✅ 기존 컨테이너 종료 및 삭제
           sudo docker-compose down
+          
+          # ✅ Firebase Key와 .env 확인
+          ls -la /home/ubuntu/Scheduler
+          cat /home/ubuntu/Scheduler/.env
+          cat /home/ubuntu/Scheduler/firebase-key.json
+          
+          # ✅ Docker Compose 실행
           sudo docker-compose up --build -d
+          
+          # ✅ 컨테이너 내부에서 Firebase 환경 변수 확인
+          sudo docker exec -it scheduler_app_1 sh -c "ls -la /app"
+          sudo docker exec -it scheduler_app_1 sh -c "cat /app/firebase-key.json"
+          sudo docker exec -it scheduler_app_1 sh -c "env | grep FIREBASE"
           EOF
         shell: bash

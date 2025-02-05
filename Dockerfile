@@ -1,6 +1,7 @@
 # ✅ 1️⃣ 빌드 단계 (용량을 줄이기 위해 node:18-alpine 사용)
 FROM node:18-alpine AS builder
 
+# WORKDIR /app
 WORKDIR /app
 
 RUN apk add --no-cache python3 py3-pip make g++
@@ -17,8 +18,6 @@ RUN npm prune --production
 
 # ✅ 2️⃣ 실행 단계 (최소한의 파일만 포함)
 FROM node:18-alpine
-
-WORKDIR /app
 
 # ✅ 빌드 결과물만 복사 (용량 최적화)
 COPY --from=builder /app/dist ./dist
