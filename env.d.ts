@@ -4,7 +4,7 @@ declare namespace NodeJS {
       SENS_SECRET_KEY: string;
       SENS_SERVICE_ID: string;
       SENDER_PHONE: string;
-      PORT?: string; // 포트 번호는 선택 사항
+      PORT?: string;
     }
   }
   

@@ -38,82 +38,84 @@ export function calculateTwoTimesAgo(lastTime: Date): Date {
   return twoTimesAgo;
 }
 
-// 선결제 여부 확인 함수
-async function checkPrepaid(userId: string, lastTime: Date): Promise<boolean> {
-  const twoTimesAgo = calculateTwoTimesAgo(lastTime);
-
-  const startTime = new Date(twoTimesAgo);
-  startTime.setMinutes(twoTimesAgo.getMinutes() - 1);
-  const endTime = new Date(twoTimesAgo);
-  endTime.setMinutes(twoTimesAgo.getMinutes() + 1);
-
-  const snapshots = await Promise.all([
-    db.collection("meetingMatch")
-      .where("meetingMatchUserIdMale", "==", userId)
-      .where("meetingMatchTime", ">=", Timestamp.fromDate(startTime))
-      .where("meetingMatchTime", "<=", Timestamp.fromDate(endTime))
-      .get(),
-    db.collection("datingMatch")
-      .where("datingMatchUserIdMale", "==", userId)
-      .where("datingMatchTime", ">=", Timestamp.fromDate(startTime))
-      .where("datingMatchTime", "<=", Timestamp.fromDate(endTime))
-      .get(),
-  ]);
-
-  return snapshots.some((snapshot) =>
-    snapshot.docs.some(
-      (doc) =>
-        doc.data().meetingMatchPayMale == 3 ||
-        doc.data().datingMatchPayMale == 3
-    )
-  );
-}
-
-// 메시지 생성 함수
-function generateProfileCouponMessage(isPrepaid: boolean, has400Picks: boolean): string | null {
-  if (isPrepaid) {
-    return "(광고) 매칭 성사 완료! 선결제 혜택으로, 추가프로필 무료 쿠폰을 지급 받았어요!";
+// Firestore의 `IN` 제한(30개) 해결: 배열을 30개씩 나누는 함수
+export function chunkArray(array: any[], size: number) {
+  const chunked = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunked.push(array.slice(i, i + size));
   }
-  if (has400Picks) {
-    return null;
-  }
-  return null;
+  return chunked;
 }
 
 // 실행 함수
 export async function executeProfileCouponAlert(handleDate?: Date): Promise<string[]> {
-  const logs: string[] = [];
   console.log("profileCouponAlert start");
+  const logs: string[] = [];
   logs.push("profileCouponAlert start");
 
-  // 현재 시간 설정: 요청 바디에서 제공된 시간 또는 Firebase Admin의 시간 사용
   const now = handleDate ? new Date(handleDate) : Timestamp.now().toDate();
-  const lastTime = calculateLastTime(now);
+  const lastTime = new Date(now);
+  lastTime.setHours(23, 0, 0, 0);
+  const twoTimesAgo = new Date(lastTime);
+  twoTimesAgo.setDate(lastTime.getDate() - 1);
 
-  const users = await db.collection("user")
-  .where("userGender", "==", 1)
-  .get()
-  .then((snapshot) => 
-    snapshot.docs.filter((doc) => {
-      const data = doc.data();
-      const isDatingGroupA = data.dating?.datingGroup === "A" && data.dating?.datingIsOn === true;
-      const isMeetingGroupA = data.meeting?.meetingGroup === "A" && data.meeting?.meetingIsOn === true;
-      return isDatingGroupA || isMeetingGroupA; // 데이팅 또는 미팅 그룹이 A이면서 활성화된 유저
-    }).map((doc) => ({
-      id: doc.id,
-      userName: doc.data().userName,
-      userPhone: doc.data().userPhone,
-      userGender: doc.data().userGender,
-      userPointBuy: doc.data().userPointBuy || 0,
-      userPointUse: doc.data().userPointUse || 0,
-      meetingIsOn: doc.data().meeting?.meetingIsOn || false,
-      meetingGroup: doc.data().meeting?.meetingGroup || "",
-      datingIsOn: doc.data().dating?.datingIsOn || false, 
-      datingGroup: doc.data().dating?.datingGroup || "",
-    }))
-  );
+  // Firestore에서 유저 데이터 가져오기 (한 번에!)
+  const usersSnapshot = await db.collection("user")
+    .where("userGender", "==", 1)
+    .select("userName", "userPhone", "userGender", "userPointBuy", "userPointUse", "meeting", "dating")
+    .get();
 
+  const users = usersSnapshot.docs.map(doc => ({
+    id: doc.id,
+    userName: doc.data().userName,
+    userPhone: doc.data().userPhone,
+    userGender: doc.data().userGender,
+    userPointBuy: doc.data().userPointBuy || 0,
+    userPointUse: doc.data().userPointUse || 0,
+    meetingIsOn: doc.data().meeting?.meetingIsOn || false,
+    meetingGroup: doc.data().meeting?.meetingGroup || "",
+    datingIsOn: doc.data().dating?.datingIsOn || false,
+    datingGroup: doc.data().dating?.datingGroup || "",
+  }));
 
+  const userIds = users.map(user => user.id);
+
+  // 유저 ID를 30개씩 나누어서 Firestore에서 가져오기
+  const userIdChunks = chunkArray(userIds, 30);
+
+  let meetingMatches: any[] = [];
+  let datingMatches: any[] = [];
+
+  for (const chunk of userIdChunks) {
+    const [meetingMatchSnapshot, datingMatchSnapshot] = await Promise.all([
+      db.collection("meetingMatch")
+        .where("meetingMatchUserIdMale", "in", chunk)
+        .where("meetingMatchTime", ">=", Timestamp.fromDate(twoTimesAgo))
+        .where("meetingMatchTime", "<=", Timestamp.fromDate(lastTime))
+        .select("meetingMatchUserIdMale", "meetingMatchPayMale")
+        .get(),
+      db.collection("datingMatch")
+        .where("datingMatchUserIdMale", "in", chunk)
+        .where("datingMatchTime", ">=", Timestamp.fromDate(twoTimesAgo))
+        .where("datingMatchTime", "<=", Timestamp.fromDate(lastTime))
+        .select("datingMatchUserIdMale", "datingMatchPayMale")
+        .get(),
+    ]);
+
+    meetingMatches.push(...meetingMatchSnapshot.docs.map(doc => doc.data()));
+    datingMatches.push(...datingMatchSnapshot.docs.map(doc => doc.data()));
+  }
+
+  // 유저 ID 기준으로 선결제 유저 목록 만들기
+  const prepaidUsers = new Set();
+  meetingMatches.forEach(doc => {
+    if (doc.meetingMatchPayMale === 3) prepaidUsers.add(doc.meetingMatchUserIdMale);
+  });
+  datingMatches.forEach(doc => {
+    if (doc.datingMatchPayMale === 3) prepaidUsers.add(doc.datingMatchUserIdMale);
+  });
+
+  // 메시지 전송할 유저 필터링
   const sentNumbers = new Set();
   let totalUsers = users.length;
   let prepaidUsersCount = 0;
@@ -124,7 +126,7 @@ export async function executeProfileCouponAlert(handleDate?: Date): Promise<stri
   for (const user of users) {
     if (sentNumbers.has(user.userPhone)) continue;
 
-    const isPrepaid = await checkPrepaid(user.id, lastTime);
+    const isPrepaid = prepaidUsers.has(user.id);
     if (isPrepaid) prepaidUsersCount++;
 
     const has400Picks = user.userPointBuy - user.userPointUse >= 400;
@@ -135,7 +137,11 @@ export async function executeProfileCouponAlert(handleDate?: Date): Promise<stri
       (user.datingIsOn && user.datingGroup === "A");
     if (isActive) activeUsersCount++;
 
-    const message = generateProfileCouponMessage(isPrepaid, has400Picks && isActive);
+    // 메시지 생성 및 발송
+    let message: string | null = null;
+    if (isPrepaid) {
+      message = "(광고) 매칭 성사 완료! 선결제 혜택으로, 추가프로필 무료 쿠폰을 지급 받았어요!";
+    }
 
     if (message) {
       sentNumbers.add(user.userPhone);
@@ -157,7 +163,6 @@ export async function executeProfileCouponAlert(handleDate?: Date): Promise<stri
 if (require.main === module) {
   executeProfileCouponAlert();
 }
-
 
 // // 스케줄러 설정
 // cron.schedule("0 13 * * *", () => {

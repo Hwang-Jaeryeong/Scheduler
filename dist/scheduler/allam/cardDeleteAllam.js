@@ -29,26 +29,25 @@ function hasAcceptedOrDeclined(matchRows, gender) {
 function checkFavoriteCards(matchRows, partnerGender, type) {
     return __awaiter(this, void 0, void 0, function* () {
         const firstViewField = type === "datingMatch" ? "datingMatchFirstView" : "meetingMatchFirstView";
-        // 1. MatchCheck와 FirstView 조건에 맞는 rows를 필터링
+        // 호감 카드 필터링
         const favoriteRows = matchRows.filter((row) => row[`${type}Check${partnerGender}`] === 3 && row[firstViewField] === 1);
         if (favoriteRows.length === 0)
-            return false; // 조건에 맞는 row가 없다면 false 반환
-        // 2. 각 row에서 partnerId를 가져와 user 컬렉션에서 포인트 확인
+            return false;
+        // 유저 정보 확인인
         for (const row of favoriteRows) {
-            const partnerId = row[`${type}UserId${partnerGender}`]; // partner ID 추출
-            // 3. user 컬렉션에서 pointBuy와 pointUse 값을 가져옴
+            const partnerId = row[`${type}UserId${partnerGender}`];
             const userDoc = yield firebase_1.default.collection("user").doc(partnerId).get();
             if (!userDoc.exists)
-                continue; // 사용자 데이터가 없으면 건너뜀
+                continue;
             const userData = userDoc.data();
             const userPointBuy = (userData === null || userData === void 0 ? void 0 : userData.userPointBuy) || 0;
             const userPointUse = (userData === null || userData === void 0 ? void 0 : userData.userPointUse) || 0;
-            // 4. 조건 검증: userPointBuy - userPointUse >= 400
+            // 포인트 조건 확인
             if (userPointBuy - userPointUse >= 400) {
-                return true; // 조건 만족 시 호감 카드로 판단
+                return true;
             }
         }
-        return false; // 모든 row가 조건을 만족하지 못한 경우
+        return false;
     });
 }
 // // 메시지 생성
@@ -67,39 +66,44 @@ function checkFavoriteCards(matchRows, partnerGender, type) {
 //   return null;
 // }
 // 실행 함수
+// 실행 함수
 function executeCardDeleteAllam(handleDate) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log("card Delete Allam start");
         const logs = []; // 로그 저장 배열
-        const users = yield firebase_1.default.collection("user")
-            .get()
-            .then((snapshot) => snapshot.docs.filter((doc) => {
-            var _a, _b, _c, _d;
-            const data = doc.data();
-            const isDatingGroupA = ((_a = data.dating) === null || _a === void 0 ? void 0 : _a.datingGroup) === "A" && ((_b = data.dating) === null || _b === void 0 ? void 0 : _b.datingIsOn) === true;
-            const isMeetingGroupA = ((_c = data.meeting) === null || _c === void 0 ? void 0 : _c.meetingGroup) === "A" && ((_d = data.meeting) === null || _d === void 0 ? void 0 : _d.meetingIsOn) === true;
-            return isDatingGroupA || isMeetingGroupA; // 조건: 데이팅 또는 미팅 그룹이 A이면서 활성화된 유저
-        }).map((doc) => ({
-            id: doc.id, // 유저 ID
-            userName: doc.data().userName, // 유저 이름
-            userPhone: doc.data().userPhone, // 유저 전화번호
-            userGender: doc.data().userGender, // 유저 성별
-        })));
+        // 🔥 Firestore에서 **소개팅 OR 미팅** 유저 가져오기 (두 개의 쿼리 실행 후 병합)
+        const datingUsersSnapshot = yield firebase_1.default.collection("user")
+            .where("dating.datingGroup", "==", "A")
+            .where("dating.datingIsOn", "==", true)
+            .select("userName", "userPhone", "userGender") // 🚀 필드 최적화
+            .get();
+        const meetingUsersSnapshot = yield firebase_1.default.collection("user")
+            .where("meeting.meetingGroup", "==", "A")
+            .where("meeting.meetingIsOn", "==", true)
+            .select("userName", "userPhone", "userGender") // 🚀 필드 최적화
+            .get();
+        // ✅ **두 개의 쿼리 결과 병합 (중복 제거)**
+        const usersMap = new Map();
+        datingUsersSnapshot.docs.forEach(doc => usersMap.set(doc.id, Object.assign({ id: doc.id }, doc.data())));
+        meetingUsersSnapshot.docs.forEach(doc => usersMap.set(doc.id, Object.assign({ id: doc.id }, doc.data())));
+        // ✅ 최종 유저 리스트
+        const users = Array.from(usersMap.values());
         const sentNumbers = new Set(); // 중복 방지
         let generalCardCount = 0;
         let favoriteCardCount = 0;
-        for (const user of users) {
+        // 🔥 **비동기 처리 최적화 (병렬 실행)**
+        yield Promise.all(users.map((user) => __awaiter(this, void 0, void 0, function* () {
             if (sentNumbers.has(user.userPhone))
-                continue;
+                return;
             const { meetingCards, datingCards } = yield (0, cardMessage_1.checkUserCards)(user, handleDate);
             const matchRows = [...meetingCards, ...datingCards];
             if (matchRows.length === 0)
-                continue;
+                return;
             const gender = user.userGender === 1 ? "Male" : "Female";
             const partnerGender = user.userGender === 1 ? "Female" : "Male";
             const acceptedOrDeclined = hasAcceptedOrDeclined(matchRows, gender);
             if (acceptedOrDeclined)
-                continue;
+                return;
             const isFavoriteMeeting = yield checkFavoriteCards(meetingCards, partnerGender, "meetingMatch");
             const isFavoriteDating = yield checkFavoriteCards(datingCards, partnerGender, "datingMatch");
             const isFavorite = isFavoriteMeeting || isFavoriteDating;
@@ -146,7 +150,7 @@ function executeCardDeleteAllam(handleDate) {
             //   // await sendSMS(testPhone!, message);
             //   sentNumbers.add(user.userPhone);
             // }
-        }
+        })));
         logs.push(`총 일반 카드 발송: ${generalCardCount}명`);
         logs.push(`총 호감 카드 발송: ${favoriteCardCount}명`);
         return logs; // 로그 반환

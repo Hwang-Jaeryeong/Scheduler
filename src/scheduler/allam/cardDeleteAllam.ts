@@ -21,34 +21,32 @@ async function checkFavoriteCards(
 ): Promise<boolean> {
   const firstViewField = type === "datingMatch" ? "datingMatchFirstView" : "meetingMatchFirstView";
 
-  // 1. MatchCheck와 FirstView 조건에 맞는 rows를 필터링
+  // 호감 카드 필터링
   const favoriteRows = matchRows.filter(
     (row) => row[`${type}Check${partnerGender}`] === 3 && row[firstViewField] === 1
   );
 
-  if (favoriteRows.length === 0) return false; // 조건에 맞는 row가 없다면 false 반환
+  if (favoriteRows.length === 0) return false;
 
-  // 2. 각 row에서 partnerId를 가져와 user 컬렉션에서 포인트 확인
+  // 유저 정보 확인인
   for (const row of favoriteRows) {
-    const partnerId = row[`${type}UserId${partnerGender}`]; // partner ID 추출
+    const partnerId = row[`${type}UserId${partnerGender}`];
 
-    // 3. user 컬렉션에서 pointBuy와 pointUse 값을 가져옴
     const userDoc = await db.collection("user").doc(partnerId).get();
-    if (!userDoc.exists) continue; // 사용자 데이터가 없으면 건너뜀
+    if (!userDoc.exists) continue;
 
     const userData = userDoc.data();
     const userPointBuy = userData?.userPointBuy || 0;
     const userPointUse = userData?.userPointUse || 0;
 
-    // 4. 조건 검증: userPointBuy - userPointUse >= 400
+    // 포인트 조건 확인
     if (userPointBuy - userPointUse >= 400) {
-      return true; // 조건 만족 시 호감 카드로 판단
+      return true;
     }
   }
 
-  return false; // 모든 row가 조건을 만족하지 못한 경우
+  return false;
 }
-
 
 // // 메시지 생성
 // function generateDeleteMessage(
@@ -69,68 +67,75 @@ async function checkFavoriteCards(
 // }
 
 // 실행 함수
+// 실행 함수
 export async function executeCardDeleteAllam(handleDate: Date): Promise<string[]> {
   console.log("card Delete Allam start");
   const logs: string[] = []; // 로그 저장 배열
 
-  const users = await db.collection("user")
-    .get()
-    .then((snapshot) =>
-      snapshot.docs.filter((doc) => {
-        const data = doc.data();
-        const isDatingGroupA = data.dating?.datingGroup === "A" && data.dating?.datingIsOn === true;
-        const isMeetingGroupA = data.meeting?.meetingGroup === "A" && data.meeting?.meetingIsOn === true;
-        return isDatingGroupA || isMeetingGroupA; // 조건: 데이팅 또는 미팅 그룹이 A이면서 활성화된 유저
-      }).map((doc) => ({
-        id: doc.id, // 유저 ID
-        userName: doc.data().userName, // 유저 이름
-        userPhone: doc.data().userPhone, // 유저 전화번호
-        userGender: doc.data().userGender, // 유저 성별
-      }))
-  );
+  // 🔥 Firestore에서 **소개팅 OR 미팅** 유저 가져오기 (두 개의 쿼리 실행 후 병합)
+  const datingUsersSnapshot = await db.collection("user")
+    .where("dating.datingGroup", "==", "A")
+    .where("dating.datingIsOn", "==", true)
+    .select("userName", "userPhone", "userGender") // 🚀 필드 최적화
+    .get();
+
+  const meetingUsersSnapshot = await db.collection("user")
+    .where("meeting.meetingGroup", "==", "A")
+    .where("meeting.meetingIsOn", "==", true)
+    .select("userName", "userPhone", "userGender") // 🚀 필드 최적화
+    .get();
+
+  // ✅ **두 개의 쿼리 결과 병합 (중복 제거)**
+  const usersMap = new Map<string, any>();
+  datingUsersSnapshot.docs.forEach(doc => usersMap.set(doc.id, { id: doc.id, ...doc.data() }));
+  meetingUsersSnapshot.docs.forEach(doc => usersMap.set(doc.id, { id: doc.id, ...doc.data() }));
+
+  // ✅ 최종 유저 리스트
+  const users = Array.from(usersMap.values());
 
   const sentNumbers = new Set(); // 중복 방지
   let generalCardCount = 0;
   let favoriteCardCount = 0;
 
-  for (const user of users) {
-    if (sentNumbers.has(user.userPhone)) continue;
-  
+  // 🔥 **비동기 처리 최적화 (병렬 실행)**
+  await Promise.all(users.map(async (user) => {
+    if (sentNumbers.has(user.userPhone)) return;
+
     const { meetingCards, datingCards } = await checkUserCards(user, handleDate);
-  
+
     const matchRows = [...meetingCards, ...datingCards];
-    if (matchRows.length === 0) continue;
-  
+    if (matchRows.length === 0) return;
+
     const gender = user.userGender === 1 ? "Male" : "Female";
     const partnerGender = user.userGender === 1 ? "Female" : "Male";
-  
+
     const acceptedOrDeclined = hasAcceptedOrDeclined(matchRows, gender);
-    if (acceptedOrDeclined) continue;
-  
+    if (acceptedOrDeclined) return;
+
     const isFavoriteMeeting = await checkFavoriteCards(meetingCards, partnerGender, "meetingMatch");
     const isFavoriteDating = await checkFavoriteCards(datingCards, partnerGender, "datingMatch");
-  
+
     const isFavorite = isFavoriteMeeting || isFavoriteDating;
-  
+
     // 카드 수신 여부 확인
     const hasReceivedCard = matchRows.length > 0;
-  
+
     if (isFavorite && !acceptedOrDeclined) {
       favoriteCardCount++;
-    } else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined){
+    } else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined) {
       generalCardCount++;
     }
-  
+
     // const message = generateDeleteMessage(
     //   user.userName,
     //   isFavorite,
     //   acceptedOrDeclined,
     //   hasReceivedCard
     // );
-  
+
     // // type 값 설정 로직
     // let type: string;
-  
+
     // if (isFavorite && !acceptedOrDeclined) {
     //   type = "호감";
     // } else if (!isFavorite && hasReceivedCard && !acceptedOrDeclined) {
@@ -138,14 +143,14 @@ export async function executeCardDeleteAllam(handleDate: Date): Promise<string[]
     // } else {
     //   type = "기타"; // 기본값 설정 (조건이 없을 경우)
     // }
-  
+
     // // templateVariables 생성
     // const templateVariables = {
     //   user_name: user.userName, // 사용자 이름
     //   type: type, // 조건에 따른 타입 설정
     //   deadline: "2025-01-31", // 마감 기한
     // };
-  
+
     // // 카카오 알림톡
     // try {
     //   await sendKakaoAlimtalk([testPhone!], templateVariables);
@@ -154,14 +159,14 @@ export async function executeCardDeleteAllam(handleDate: Date): Promise<string[]
     // } catch (error) {
     //   logs.push(`알림톡 전송 실패: ${user.userPhone}, Error: ${error}`);
     // }
-  
+
     // 문자 전송
     // if (message) {
     //   // logs.push(`Sending SMS to ${user.userPhone}: "${message}"`);
     //   // await sendSMS(testPhone!, message);
     //   sentNumbers.add(user.userPhone);
     // }
-  }
+  }));
 
   logs.push(`총 일반 카드 발송: ${generalCardCount}명`);
   logs.push(`총 호감 카드 발송: ${favoriteCardCount}명`);

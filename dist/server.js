@@ -13,26 +13,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const firebase_admin_1 = __importDefault(require("firebase-admin"));
-const path_1 = __importDefault(require("path"));
 const cardMessage_1 = require("./scheduler/allam/cardMessage");
 const cardDeleteAllam_1 = require("./scheduler/allam/cardDeleteAllam");
 const postpayer_1 = require("./scheduler/allam/postpayer");
 const profileCouponAlert_1 = require("./scheduler/allam/profileCouponAlert");
+const activeUser_1 = require("./scheduler/activeUser");
+// import cron from "node-cron";
 const app = (0, express_1.default)();
 const port = 3000;
-// ✅ Firebase 초기화
-const firebaseKeyPath = path_1.default.join(__dirname, "firebase-key.json");
-try {
-    firebase_admin_1.default.initializeApp({
-        credential: firebase_admin_1.default.credential.cert(firebaseKeyPath),
-        databaseURL: "https://your-project-id.firebaseio.com", // 🔥 프로젝트 ID 수정 필요
-    });
-    console.log("✅ Firebase Admin SDK Initialized");
-}
-catch (error) {
-    console.error("🔥 Firebase Admin SDK Initialization Failed:", error);
-}
 // ✅ JSON 요청 처리 미들웨어
 app.use(express_1.default.json());
 // ✅ 로그 저장 배열
@@ -116,7 +104,74 @@ app.post("/profile-coupon-alert", (req, res) => __awaiter(void 0, void 0, void 0
         res.status(500).send({ success: false, message: "executeProfileCouponAlert 실행 중 에러 발생", error: error.message });
     }
 }));
-// ✅ 서버 실행
+// ✅ GET /active-user-check
+app.get("/active-user-check", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        console.log("GET /active-user-check 요청 수신");
+        // handleDate를 쿼리 파라미터로 받거나 기본값으로 현재 시간 설정
+        const handleDate = req.query.handleDate
+            ? new Date(req.query.handleDate)
+            : new Date(); // 기본값: 현재 시간
+        // 🔹 전체 활성화 유저 수 + 잘못 활성화된 유저 가져오기
+        const { incorrectUsers, totalActiveUsers } = yield (0, activeUser_1.findIncorrectlyActivatedUsers)(handleDate);
+        // ✅ 응답 최상단에 "총 활성화 유저 수" 추가
+        res.status(200).send({
+            success: true,
+            message: "활성화 유저 검사 완료",
+            총_활성화_유저: totalActiveUsers, // 🔹 추가됨!
+            logs: [
+                `총 ${incorrectUsers.length}명의 잘못 활성화된 유저를 확인했습니다.`,
+                ...incorrectUsers.map((user, index) => `#${index + 1} - 이름: ${user.userName}, 전화번호: ${user.userPhone}, ` +
+                    `데이트 그룹: ${user.datingGroup}, 미팅 그룹: ${user.meetingGroup}, ` +
+                    `이벤트 시간: ${user.eventTime}, userLastAccessTime: ${user.userLastAccessTime}`)
+            ]
+        });
+    }
+    catch (error) {
+        console.error("❌ 활성화 유저 검사 중 에러:", error);
+        res.status(500).send({
+            success: false,
+            message: "활성화 유저 검사 중 에러 발생",
+            error: error.message,
+        });
+    }
+}));
+// ✅ 잘못된 유저 수정 (POST)
+app.post("/active-user-update", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        console.log("POST /active-user-update 요청 수신");
+        const handleDate = req.body.handleDate
+            ? new Date(req.body.handleDate)
+            : new Date();
+        const updatedUsers = yield (0, activeUser_1.updateIncorrectlyActivatedUsers)(handleDate);
+        res.status(200).send({
+            success: true,
+            message: "잘못 활성화된 유저 수정 완료",
+            updatedUsers,
+        });
+    }
+    catch (error) {
+        console.error("❌ 활성화 유저 수정 중 에러:", error);
+        res.status(500).send({
+            success: false,
+            message: "활성화 유저 수정 중 에러 발생",
+            error: error.message,
+        });
+    }
+}));
+// // ✅ 스케줄러 추가 (예시로 매일 오전 9시?)
+// cron.schedule("0 9 * * *", async () => {
+//     console.log("[스케줄러] 매일 오전 9시: 활성화된 유저 자동 수정 시작");
+//     try {
+//         await updateIncorrectlyActivatedUsers();
+//         console.log("✅ [스케줄러] 잘못 활성화된 유저 자동 수정 완료");
+//     } catch (error) {
+//         console.error("❌ [스케줄러] 활성화 유저 수정 중 에러 발생:", error);
+//     }
+// }, {
+//     timezone: "Asia/Seoul" // KST 기준
+// });
+// 서버 실행
 app.listen(port, () => {
     console.log(`✅ Server running on http://localhost:${port}`);
 });
